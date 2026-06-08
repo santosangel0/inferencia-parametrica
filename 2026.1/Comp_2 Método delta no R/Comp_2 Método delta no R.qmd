@@ -1,0 +1,361 @@
+---
+title: "Método Delta no R"
+lang: pt-BR
+author: "Angelo dos Santos"
+format:
+  html:
+    embed-resources: true
+    code-fold: true
+    code-summary: "Mostrar o código"
+    grid:
+      body-width: 800px
+      margin-width: 100px
+---
+
+## 1. Fundamentação Teórica: Exercício 3.13
+
+Neste estudo, analisamos o comportamento assintótico do Estimador de Máxima Verossimilhança (EMV) para a probabilidade de sobrevivência a um tempo unitário sob um modelo exponencial. O problema é baseado no Exercício 3.13 do livro de Bolfarine e Bussab:
+
+> **Enunciado:** Sejam $X_1, \dots, X_n$ uma amostra aleatória da variável aleatória $X$ com distribuição exponencial com parâmetro $\theta$. Encontre o estimador de máxima verossimilhança de $g(\theta) = P[X > 1]$ e sua distribuição aproximada quando $n$ for grande.
+
+Abaixo, descrevemos os passos analíticos para a obtenção do estimador e de sua distribuição assintótica.
+
+### Passo 1: Expressar $g(\theta)$
+A variável aleatória $X$ segue uma distribuição Exponencial com parâmetro de taxa $\theta > 0$. Sua função de densidade de probabilidade é dada por:
+$$f(x; \theta) = \theta e^{-\theta x}, \quad x > 0$$
+
+A função de interesse é a probabilidade de sobrevivência após o tempo $x = 1$:
+$$g(\theta) = P[X > 1] = \int_{1}^{\infty} \theta e^{-\theta x} \, dx = \left[ -e^{-\theta x} \right]_1^{\infty} = e^{-\theta}$$
+
+### Passo 2: Obter o EMV de $\theta$
+A função de verossimilhança para uma amostra i.i.d. $X_1, \dots, X_n$ é:
+$$L(\theta) = \prod_{i=1}^{n} f(X_i; \theta) = \prod_{i=1}^{n} \theta e^{-\theta X_i} = \theta^n e^{-\theta \sum_{i=1}^{n} X_i}$$
+
+A função de log-verossimilhança correspondente é:
+$$\ell(\theta) = \ln L(\theta) = n \ln(\theta) - \theta \sum_{i=1}^{n} X_i$$
+
+Para encontrar o EMV de $\theta$, derivamos $\ell(\theta)$ em relação a $\theta$ e igualamos a zero:
+$$\frac{d\ell(\theta)}{d\theta} = \frac{n}{\theta} - \sum_{i=1}^{n} X_i = 0 \implies \hat{\theta}_{\text{EMV}} = \frac{n}{\sum_{i=1}^{n} X_i} = \frac{1}{\bar{X}}$$
+
+A segunda derivada confirma que temos um ponto de máximo:
+$$\frac{d^2\ell(\theta)}{d\theta^2} = -\frac{n}{\theta^2} < 0$$
+
+### Passo 3: Obter o EMV de $g(\theta)$
+Pela propriedade de invariância dos estimadores de máxima verossimilhança, o EMV de uma função do parâmetro, $g(\theta)$, é a própria função avaliada no EMV de $\theta$. Portanto:
+$$\hat{g} = g(\hat{\theta}_{\text{EMV}}) = e^{-\hat{\theta}_{\text{EMV}}} = e^{-1/\bar{X}}$$
+
+### Passo 4: Distribuição Assintótica via Método Delta
+Para determinar a distribuição aproximada de $\hat{g}$ para grandes amostras, podemos seguir dois caminhos equivalentes:
+
+#### Caminho A: A partir da distribuição limite do EMV de $\theta$
+A Informação de Fisher de uma única observação é:
+$$I(\theta) = -E\left[ \frac{d^2}{d\theta^2} \ln f(X; \theta) \right] = -E\left[ -\frac{1}{\theta^2} \right] = \frac{1}{\theta^2}$$
+
+Pela teoria assintótica dos estimadores de máxima verossimilhança, temos:
+$$\sqrt{n}(\hat{\theta}_{\text{EMV}} - \theta) \xrightarrow{d} \mathcal{N}\left(0, I(\theta)^{-1}\right) \implies \sqrt{n}(\hat{\theta}_{\text{EMV}} - \theta) \xrightarrow{d} \mathcal{N}\left(0, \theta^2\right)$$
+
+Definimos a função $g(\theta) = e^{-\theta}$, cuja derivada é $g'(\theta) = -e^{-\theta}$. Pelo **Método Delta Univariado**, a variância assintótica da transformação é:
+$$\text{Var}_{\text{assint}}(\hat{g}) = [g'(\theta)]^2 \cdot \text{Var}_{\text{assint}}(\hat{\theta}_{\text{EMV}}) = (-e^{-\theta})^2 \cdot \theta^2 = \theta^2 e^{-2\theta}$$
+
+#### Caminho B: A partir do Teorema do Limite Central (TLC) para $\bar{X}$
+Como $X_i \sim \text{Exp}(\theta)$ i.i.d., temos $E[X_i] = 1/\theta$ e $\text{Var}(X_i) = 1/\theta^2$. Pelo TLC:
+$$\sqrt{n}(\bar{X} - 1/\theta) \xrightarrow{d} \mathcal{N}\left(0, \frac{1}{\theta^2}\right)$$
+
+Definimos a transformação $h(u) = e^{-1/u}$, de modo que $\hat{g} = h(\bar{X})$. A derivada de $h$ é:
+$$h'(u) = \frac{1}{u^2} e^{-1/u}$$
+
+Avaliando a derivada no valor esperado de $\bar{X}$ (ou seja, $u = 1/\theta$):
+$$h'(1/\theta) = \frac{1}{(1/\theta)^2} e^{-1/(1/\theta)} = \theta^2 e^{-\theta}$$
+
+Pelo Método Delta aplicado à média amostral:
+$$\text{Var}_{\text{assint}}(\hat{g}) = [h'(1/\theta)]^2 \cdot \text{Var}_{\text{assint}}(\bar{X}) = (\theta^2 e^{-\theta})^2 \cdot \frac{1}{\theta^2} = \theta^2 e^{-2\theta}$$
+
+#### Conclusão da Distribuição Limite
+Ambos os caminhos nos levam ao mesmo resultado. Para $n$ grande, a distribuição assintótica do estimador $\hat{g}$ é dada por:
+$$\sqrt{n}(\hat{g} - g(\theta)) \xrightarrow{d} \mathcal{N}\left(0, \theta^2 e^{-2\theta}\right)$$
+
+Ou, de forma prática em termos de aproximação:
+$$\hat{g} \approx \mathcal{N}\left(e^{-\theta}, \frac{\theta^2 e^{-2\theta}}{n}\right)$$
+
+---
+
+```{r}
+#| message: false
+#| warning: false
+library(gt)
+library(tibble)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+library(ggdist)
+library(msm)
+```
+
+## 2. Simulação e Resultados
+
+Para validar empiricamente as aproximações teóricas fornecidas pelo Método Delta, realizamos um estudo de simulação Monte Carlo.
+
+Consideramos o parâmetro verdadeiro $\theta = 1.5$, o que implica na probabilidade de sobrevivência real $g(\theta) = e^{-1.5} \approx 0.22313$. Avaliamos os tamanhos amostrais $n \in \{5, 10, 25, 50, 100, 250, 500, 1000\}$, com $B = 10000$ replicações para cada cenário.
+
+```{r}
+simular_delta_method <- function(theta_verdadeiro = 1.5, B = 10000) {
+  tamanhos_n <- c(5, 10, 25, 50, 100, 250, 500, 1000)
+  g_verdadeiro <- exp(-theta_verdadeiro)
+  
+  processar_n <- function(n) {
+    # Gera B amostras de tamanho n a partir da Exp(theta)
+    amostras <- matrix(rexp(n * B, rate = theta_verdadeiro), 
+                       nrow = n, 
+                       ncol = B)
+    
+    # Média amostral para cada uma das B colunas
+    x_bar <- colMeans(amostras)
+    
+    # Estimador EMV de theta e de g(theta)
+    theta_hat <- 1 / x_bar
+    g_hat <- exp(-theta_hat)
+    
+    # Métricas empíricas
+    vies_emp <- mean(g_hat) - g_verdadeiro
+    var_emp <- var(g_hat)
+    eqm_emp <- mean((g_hat - g_verdadeiro)^2)
+    
+    # Variância teórica (aproximação do Método Delta)
+    var_teorica <- (theta_verdadeiro^2 * exp(-2 * theta_verdadeiro)) / n
+    
+    # Razão de variâncias (deve convergir para 1)
+    razao_var <- var_emp / var_teorica
+    
+    # Cobertura do intervalo de confiança de 95%
+    # Erro padrão estimado (plug-in)
+    se_delta <- (theta_hat * exp(-theta_hat)) / sqrt(n)
+    ic_lower <- g_hat - 1.96 * se_delta
+    ic_upper <- g_hat + 1.96 * se_delta
+    cobertura <- mean(ic_lower <= g_verdadeiro & g_verdadeiro <= ic_upper)
+    
+    return(c(
+      Vies = vies_emp,
+      Var_Emp = var_emp,
+      Var_Teor = var_teorica,
+      Razao_Var = razao_var,
+      EQM = eqm_emp,
+      Cobertura = cobertura
+    ))
+  }
+  
+  # Executa a simulação para todos os n
+  resultados <- vapply(tamanhos_n, processar_n, numeric(6))
+  colnames(resultados) <- paste0("n=", tamanhos_n)
+  
+  return(as.data.frame(t(resultados)))
+}
+```
+
+### Resultados da Simulação
+
+A tabela a seguir apresenta os resultados sumarizados para cada tamanho amostral.
+
+```{r}
+# Executando a simulação
+set.seed(42) # Garantindo reprodutibilidade
+resultado_simulacao <- simular_delta_method(theta_verdadeiro = 1.5)
+
+# Formatando a tabela com o pacote gt
+tabela_delta <- resultado_simulacao %>%
+  rownames_to_column(var = "Metrica") %>%
+  gt() %>%
+  tab_header(
+    title = md("**Estudo de Simulação: Método Delta**"),
+    subtitle = md("Métricas de desempenho do estimador $\\hat{g} = e^{-1/\\bar{X}}$ para $\\theta = 1.5$")
+  ) %>%
+  cols_label(
+    Metrica = "Tamanho (n)",
+    Vies = "Viés",
+    Var_Emp = "Var. Empírica",
+    Var_Teor = "Var. Teórica (Delta)",
+    Razao_Var = "Razão de Var. (Emp/Teor)",
+    EQM = "EQM",
+    Cobertura = "Cobertura IC 95%"
+  ) %>%
+  fmt_number(
+    columns = c("Vies", "Var_Emp", "Var_Teor", "Razao_Var", "EQM"),
+    decimals = 5
+  ) %>%
+  fmt_percent(
+    columns = "Cobertura",
+    decimals = 2
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Metrica)
+  ) %>%
+  opt_align_table_header(align = "left")
+
+tabela_delta
+```
+
+---
+
+## 3. Visualização Gráfica do Comportamento Assintótico
+
+Criamos um painel 2x2 para ilustrar graficamente a convergência do viés, da variância, do EQM e a consistência/normalidade assintótica do estimador à medida que o tamanho amostral aumenta.
+
+```{r}
+gerar_painel_delta <- function(dados_sumarizados, theta_verdadeiro = 1.5, B = 10000) {
+  g_verdadeiro <- exp(-theta_verdadeiro)
+  
+  # 1. Preparação dos dados para os gráficos de linha
+  df_linha <- dados_sumarizados %>%
+    mutate(n_val = as.numeric(gsub("n=", "", rownames(dados_sumarizados))))
+  
+  cores <- c("Empírica" = "#2c3e50", "Teórica (Delta)" = "#e67e22")
+  
+  teminha <- theme_minimal() + 
+    theme(
+      legend.position = "none", 
+      plot.title = element_text(size = 11, face = "bold"),
+      axis.title = element_text(face = "bold") 
+    )
+  
+  # A. Gráfico do Viés
+  g_vies <- ggplot(df_linha, aes(x = n_val, y = Vies)) +
+    geom_line(color = "#2c3e50", size = 0.8) + 
+    geom_point(color = "#2c3e50", size = 2) + 
+    labs(title = "Viés Empírico", x = "n", y = "Valor") + 
+    teminha
+  
+  # B. Gráfico das Variâncias
+  df_var_long <- df_linha %>%
+    select(n_val, Var_Emp, Var_Teor) %>%
+    pivot_longer(cols = c(Var_Emp, Var_Teor), names_to = "Tipo", values_to = "Valor") %>%
+    mutate(Tipo = factor(Tipo, levels = c("Var_Emp", "Var_Teor"), labels = c("Empírica", "Teórica (Delta)")))
+  
+  g_var <- ggplot(df_var_long, aes(x = n_val, y = Valor, color = Tipo)) +
+    geom_line(size = 0.8) + 
+    geom_point(size = 2) + 
+    scale_color_manual(values = cores) + 
+    labs(title = "Variância: Empírica vs Teórica", x = "n", y = "Valor") + 
+    teminha
+  
+  # C. Gráfico do EQM
+  g_eqm <- ggplot(df_linha, aes(x = n_val, y = EQM)) +
+    geom_line(color = "#16a085", size = 0.8) + 
+    geom_point(color = "#16a085", size = 2) + 
+    labs(title = "Erro Quadrático Médio (EQM)", x = "n", y = "Valor") + 
+    teminha
+  
+  # D. Gráfico de Consistência (n = 10, 100, 1000)
+  n_rep <- c(10, 100, 1000)
+  df_dist <- data.frame()
+  for(n in n_rep) {
+    amostras <- matrix(rexp(n * B, rate = theta_verdadeiro), nrow = n)
+    theta_hats <- 1 / colMeans(amostras)
+    g_hats <- exp(-theta_hats)
+    df_dist <- rbind(df_dist, data.frame(
+      n_val = as.factor(n), 
+      Estimativa = g_hats
+    ))
+  }
+  
+  g_dist <- ggplot(df_dist, aes(x = n_val, y = Estimativa, fill = n_val)) +
+    stat_halfeye(side = "right", width = 0.8, justification = 0, alpha = 0.6, point_colour = NA) +
+    geom_hline(aes(yintercept = g_verdadeiro, linetype = "Parâmetro Real"), color = "red", alpha = 0.8) +
+    scale_fill_brewer(palette = "Set2") +
+    scale_linetype_manual(values = "dashed") + 
+    labs(title = "Consistência e Normalidade Assintótica", x = "n", y = "Estimativa (\u011d)") + 
+    teminha +
+    theme(
+      axis.text.y = element_blank(),        
+      axis.ticks.y = element_blank(),       
+      panel.grid.major.y = element_blank(), 
+      panel.grid.minor.y = element_blank()
+    )
+  
+  # Montagem Final com Patchwork
+  (g_vies + g_var) / (g_eqm + g_dist) + 
+    plot_layout(guides = 'collect') & 
+    theme(legend.position = 'bottom', legend.title = element_blank())
+}
+```
+
+```{r}
+#| label: fig-painel-delta
+#| fig-cap: "Avaliação do comportamento assintótico e propriedades do estimador obtido pelo Método Delta."
+#| fig-width: 12
+#| fig-height: 7
+#| column: page-right
+
+gerar_painel_delta(dados_sumarizados = resultado_simulacao, theta_verdadeiro = 1.5)
+```
+
+---
+
+## 4. Uso da Função deltamethod() no R
+
+O pacote `msm` fornece a função `deltamethod()` que automatiza a aproximação de primeira ordem da variância de funções de estimadores. A assinatura da função é:
+
+```r
+deltamethod(g, mean, cov, ses = TRUE)
+```
+
+onde `g` é a expressão matemática escrita como uma string (utilizando variáveis simbólicas `x1`, `x2`, etc.), `mean` é o vetor de estimativas e `cov` é a matriz de covariância estimada dos estimadores correspondentes.
+
+Abaixo, ilustramos a aplicação prática para uma única amostra de tamanho $n = 100$ gerada sob o nosso modelo, apresentando as duas abordagens descritas na fundamentação teórica.
+
+```{r}
+#| code-fold: false
+# 1. Geração de uma única amostra observada (n = 100, theta = 1.5)
+set.seed(123)
+n_obs <- 100
+theta_real <- 1.5
+g_real <- exp(-theta_real)
+
+dados_amostra <- rexp(n_obs, rate = theta_real)
+x_bar_obs <- mean(dados_amostra)
+
+# --- Abordagem A: Com base no EMV de theta ---
+theta_hat_obs <- 1 / x_bar_obs
+# Variância estimada (plug-in) do EMV de theta: theta^2 / n
+var_theta_hat_obs <- (theta_hat_obs^2) / n_obs
+
+# Chamada da função deltamethod para exp(-theta)
+# Como a expressão depende de um único estimador, chamamos 'x1'
+var_delta_A <- deltamethod(~ exp(-x1), mean = theta_hat_obs, cov = var_theta_hat_obs)
+se_delta_A  <- deltamethod(~ exp(-x1), mean = theta_hat_obs, cov = var_theta_hat_obs, ses = TRUE)
+
+# --- Abordagem B: Com base na Média Amostral ---
+# Variância estimada (plug-in) de x_bar: s^2 / n, ou equivalentemente x_bar^2 / n sob a exponencial
+var_x_bar_obs <- (x_bar_obs^2) / n_obs
+
+# Chamada da função deltamethod para exp(-1/x_bar)
+var_delta_B <- deltamethod(~ exp(-1/x1), mean = x_bar_obs, cov = var_x_bar_obs)
+se_delta_B  <- deltamethod(~ exp(-1/x1), mean = x_bar_obs, cov = var_x_bar_obs, ses = TRUE)
+
+# --- Comparação dos Resultados ---
+cat("g(theta) verdadeiro:", g_real, "\n")
+cat("Estimativa g_hat (Abordagem A):", exp(-theta_hat_obs), "\n")
+cat("Estimativa g_hat (Abordagem B):", exp(-1/x_bar_obs), "\n\n")
+
+cat("Variância via Método Delta (Abordagem A):", var_delta_A, " | Erro Padrão:", se_delta_A, "\n")
+cat("Variância via Método Delta (Abordagem B):", var_delta_B, " | Erro Padrão:", se_delta_B, "\n\n")
+
+# Construindo o Intervalo de Confiança de 95% (Wald)
+g_hat_obs <- exp(-theta_hat_obs)
+ic_inf <- g_hat_obs - 1.96 * se_delta_A
+ic_sup <- g_hat_obs + 1.96 * se_delta_A
+cat("Intervalo de Confiança de 95% para g(theta): [", round(ic_inf, 5), ",", round(ic_sup, 5), "]\n")
+```
+
+Note que ambas as formulações produzem resultados numéricos idênticos para a estimativa pontual, para a variância assintótica estimada e para o respectivo erro padrão.
+
+---
+
+## 5. Análise e Discussão
+
+Os resultados obtidos através da simulação Monte Carlo e da implementação prática revelam características fundamentais do comportamento do Método Delta:
+
+1. **Convergência do Viés:** O estimador $\hat{g} = e^{-1/\bar{X}}$ é viesado para amostras pequenas (como observado para $n = 5$ e $n = 10$). Isso ocorre devido à não-linearidade da transformação $g(\theta) = e^{-\theta}$. No entanto, conforme o tamanho amostral $n$ aumenta, o viés empírico rapidamente decai em direção a zero, confirmando a propriedade de **consistência** do estimador.
+2. **Qualidade da Variância Assintótica:** A variância teórica calculada via Método Delta é uma excelente aproximação para a variância empírica. Para $n \ge 50$, a razão entre a variância empírica e a variância aproximada teoricamente pelo Método Delta está extremamente próxima de 1 (diferindo por menos de 2%), indicando que a aproximação de primeira ordem por expansão de Taylor é altamente confiável.
+3. **Cobertura do Intervalo de Confiança:** Para amostras muito pequenas ($n = 5$), a cobertura do intervalo de confiança de 95% construído sob a premissa de normalidade Wald é subótima (em torno de 85%). Isso ocorre porque, em amostras pequenas, a distribuição amostral de $\hat{g}$ apresenta forte assimetria e o Teorema do Limite Central ainda não é válido. Contudo, para amostras moderadas e grandes ($n \ge 100$), a cobertura empírica atinge a taxa nominal de aproximadamente $95\%$.
+4. **Convergência para a Normalidade:** O painel "Consistência e Normalidade Assintótica" ilustra que, conforme $n$ cresce de 10 para 1000, a distribuição das estimativas se estreita em torno do parâmetro verdadeiro (representado pela linha tracejada vermelha) e assume um perfil progressivamente simétrico e normal, corroborando a teoria matemática por trás do Método Delta.
