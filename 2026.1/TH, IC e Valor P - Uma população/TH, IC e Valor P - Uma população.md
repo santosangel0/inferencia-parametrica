@@ -1,0 +1,293 @@
+
+```#| label: libs
+#| message: false
+#| warning: false
+library(gt)
+library(tibble)
+library(ggplot2)
+```
+
+## Introdução
+
+Resolvemos dois exercícios de teste de hipóteses para **um único parâmetro
+populacional** (uma média e uma proporção). Em cada caso aplicamos as **três
+abordagens** equivalentes:
+
+- **Método tradicional:** comparar a estatística do teste com o(s) valor(es) crítico(s)
+  que delimitam a região crítica (RC).
+- **Método do valor-P:** calcular a probabilidade, sob $H_0$, de observar algo tão ou
+  mais extremo que o dado, e compará-la com $\alpha$.
+- **Método do intervalo de confiança:** verificar se o valor hipotético do parâmetro é
+  compatível com o IC.
+
+As três conduzem **sempre à mesma decisão** — mudam apenas a forma de apresentá-la.
+
+## Exercício 1 — Concentração de benzeno em charutos
+
+A concentração de benzeno (em mg/g de tabaco) tem distribuição **aproximadamente normal**,
+com **média e desvio padrão desconhecidos**. Em cigarros, a concentração média de
+referência é $\mu_0 = 81$ mg/g. Uma amostra aleatória de **7 charutos** acusou média
+$\bar{x} = 151$ mg/g e desvio padrão $s = 9$ mg/g. Ao nível de significância de **5%**,
+deseja-se verificar se a concentração média de benzeno nos charutos é **igual** à dos
+cigarros.
+
+### Hipóteses
+
+Como a pergunta é se as concentrações são **iguais** (sem direção pré-fixada), o teste é
+**bilateral**:
+
+$$
+H_0:\ \mu = 81 \qquad \text{versus} \qquad H_1:\ \mu \neq 81.
+$$
+
+Como $\sigma$ é **desconhecido**, $n = 7$ é pequeno e a população é Normal, a estatística
+apropriada segue uma **$t$ de Student** com $n-1 = 6$ graus de liberdade:
+
+$$
+T_0 = \frac{\bar{X} - \mu_0}{S/\sqrt{n}} \ \stackrel{H_0}{\sim}\ t_{(n-1)}.
+$$
+
+```#| label: ex1-dados
+n     <- 7
+xbar  <- 151
+s     <- 9
+mu0   <- 81
+alpha <- 0.05
+
+ep <- s / sqrt(n)             # erro-padrão da média
+gl <- n - 1                   # graus de liberdade
+t0 <- (xbar - mu0) / ep       # estatística do teste
+
+cat(sprintf("erro-padrão = %.4f | gl = %d | T0 = %.4f\n", ep, gl, t0))
+```
+
+$$
+T_0 = \frac{151 - 81}{9/\sqrt{7}} = \frac{70}{3{,}4017} \approx 20{,}58.
+$$
+
+### (i) Método tradicional
+
+```#| label: ex1-tradicional
+t_crit <- qt(1 - alpha/2, df = gl)   # |t_{0,025; 6}|
+cat(sprintf("Valor crítico |t_{0,025; 6}| = %.6f\n", t_crit))
+cat(sprintf("Decisão: %s\n",
+            ifelse(abs(t0) > t_crit, "rejeita H0", "não rejeita H0")))
+```
+
+A região crítica (bilateral) é
+
+$$
+RC = \{\, T_0 : |T_0| > t_{0{,}025;\,6} \,\} = \{\, |T_0| > 2{,}4469 \,\}.
+$$
+
+Como $T_0 \approx 20{,}58 > 2{,}4469$, **rejeitamos $H_0$**.
+
+### (ii) Método do valor-P
+
+```#| label: ex1-valorp
+valor_p <- 2 * pt(-abs(t0), df = gl)   # bilateral
+cat(sprintf("valor-P = 2·P(T6 > %.2f) = %.3e\n", abs(t0), valor_p))
+```
+
+$$
+\text{valor-P} = 2\,P(T_6 > 20{,}58) \approx 0 \quad (\text{da ordem de } 10^{-6}).
+$$
+
+Como valor-P $< \alpha = 0{,}05$, **rejeitamos $H_0$**.
+
+### (iii) Método do intervalo de confiança
+
+O IC bilateral de 95% para $\mu$ é $\bar{x} \pm t_{0{,}025;\,6}\, s/\sqrt{n}$:
+
+```#| label: ex1-ic
+erro <- t_crit * ep
+ic   <- c(xbar - erro, xbar + erro)
+cat(sprintf("IC 95%% para mu: [%.4f ; %.4f]\n", ic[1], ic[2]))
+cat(sprintf("mu0 = 81 está dentro do IC? %s\n",
+            ifelse(mu0 >= ic[1] & mu0 <= ic[2], "SIM", "NÃO")))
+```
+
+$$
+IC(\mu;\,0{,}95) = 151 \pm 2{,}4469 \cdot 3{,}4017 \approx [\,142{,}68;\ 159{,}32\,].
+$$
+
+Como $\mu_0 = 81$ está **fora** do intervalo, **rejeitamos $H_0$** (coerente com as duas
+abordagens anteriores).
+
+```#| label: fig-ex1
+#| fig-cap: "t de Student (6 g.l.): região de rejeição bilateral (5%). A estatística T0 ≈ 20,58 cai muito além do limite direito."
+#| fig-width: 7
+#| fig-height: 4
+xg    <- seq(-4.5, 4.5, length.out = 600)
+dt6   <- data.frame(x = xg, y = dt(xg, df = gl))
+cauda_esq <- subset(dt6, x <= -t_crit)
+cauda_dir <- subset(dt6, x >=  t_crit)
+
+ggplot(dt6, aes(x, y)) +
+  geom_area(data = cauda_esq, fill = "tomato", alpha = 0.5) +
+  geom_area(data = cauda_dir, fill = "tomato", alpha = 0.5) +
+  geom_line(linewidth = 0.9, color = "#2c3e50") +
+  geom_vline(xintercept = c(-t_crit, t_crit),
+             linetype = "dashed", color = "tomato") +
+  annotate("text", x = 4.4, y = 0.10, hjust = 1, size = 3.2, color = "darkred",
+           label = "T0 ≈ 20,58\n(muito além da R.C.)") +
+  labs(title = "Exercício 1 — região crítica e estatística observada",
+       x = "Estatística t", y = "Densidade") +
+  theme_minimal(base_size = 12)
+```
+
+### Conclusão no contexto
+
+As três abordagens concordam: há **evidência fortíssima** (ao nível de 5%) de que a
+concentração média de benzeno nos charutos **difere** da dos cigarros. Mais do que isso,
+a média observada ($151$ mg/g) é cerca de **duas vezes** a referência dos cigarros
+($81$ mg/g), sugerindo concentração de benzeno substancialmente **maior** nos charutos.
+
+## Exercício 2 — Proporção de fumantes
+
+Uma pesquisa médica afirma que **pelo menos 25%** ($p \ge 0{,}25$) da população adulta dos
+EUA é composta por fumantes. Em uma amostra aleatória de **200 adultos**, $24{,}5\%$
+afirmaram ser fumantes ($\hat{p} = 0{,}245$). Ao nível de significância de **1%**, há
+evidência suficiente para **rejeitar a alegação** da pesquisa?
+
+### Hipóteses
+
+A alegação contém a igualdade ($p \ge 0{,}25$), logo entra como $H_0$. Para *rejeitá-la*
+precisaríamos de evidência de que a proporção é **menor** que $25\%$ — teste **unilateral
+à esquerda**:
+
+$$
+H_0:\ p \ge 0{,}25 \qquad \text{versus} \qquad H_1:\ p < 0{,}25.
+$$
+
+Com $n = 200$ grande, usamos a aproximação normal, padronizando sob $H_0$ (isto é, com
+$p_0 = 0{,}25$):
+
+$$
+Z_0 = \frac{\hat{p} - p_0}{\sqrt{\dfrac{p_0(1-p_0)}{n}}} \ \stackrel{H_0}{\approx}\ N(0,1).
+$$
+
+```#| label: ex2-dados
+n     <- 200
+phat  <- 0.245
+p0    <- 0.25
+alpha <- 0.01
+
+se0 <- sqrt(p0 * (1 - p0) / n)   # erro-padrão sob H0
+z0  <- (phat - p0) / se0
+
+cat(sprintf("erro-padrão (sob H0) = %.6f | Z0 = %.4f\n", se0, z0))
+```
+
+$$
+Z_0 = \frac{0{,}245 - 0{,}25}{\sqrt{0{,}25 \cdot 0{,}75/200}}
+= \frac{-0{,}005}{0{,}030619} \approx -0{,}16.
+$$
+
+### (i) Método tradicional
+
+```#| label: ex2-tradicional
+z_crit <- qnorm(alpha)   # -z_{0,01} (cauda à esquerda)
+cat(sprintf("Valor crítico = %.6f\n", z_crit))
+cat(sprintf("Decisão: %s\n",
+            ifelse(z0 < z_crit, "rejeita H0", "não rejeita H0")))
+```
+
+A região crítica (unilateral à esquerda) é
+
+$$
+RC = \{\, Z_0 : Z_0 < -z_{0{,}01} \,\} = \{\, Z_0 < -2{,}3263 \,\}.
+$$
+
+Como $Z_0 \approx -0{,}16 > -2{,}3263$, **não rejeitamos $H_0$**.
+
+### (ii) Método do valor-P
+
+```#| label: ex2-valorp
+valor_p <- pnorm(z0)   # H1: p < 0,25 -> cauda inferior
+cat(sprintf("valor-P = P(Z < %.4f) = %.4f\n", z0, valor_p))
+```
+
+$$
+\text{valor-P} = P(Z < -0{,}16) \approx 0{,}435.
+$$
+
+Como valor-P $\approx 0{,}435 \gg \alpha = 0{,}01$, **não rejeitamos $H_0$**.
+
+### (iii) Método do intervalo de confiança
+
+Como o teste é **unilateral à esquerda**, o IC equivalente é um **limite superior de
+confiança** (unilateral) para $p$, a 99%:
+
+$$
+p \ \le\ \hat{p} + z_{0{,}01}\sqrt{\frac{\hat{p}(1-\hat{p})}{n}}.
+$$
+
+```#| label: ex2-ic
+se_hat  <- sqrt(phat * (1 - phat) / n)
+lim_sup <- phat + qnorm(1 - alpha) * se_hat
+cat(sprintf("Limite superior de confiança (99%%): %.4f\n", lim_sup))
+cat(sprintf("p0 = 0,25 permanece plausível (<= limite)? %s\n",
+            ifelse(p0 <= lim_sup, "SIM (não rejeita)", "NÃO (rejeita)")))
+```
+
+Obtemos o limite superior $\approx 0{,}316$, ou seja, estamos 99% confiantes de que
+$p \le 0{,}316$. A regra é **rejeitar a alegação apenas se esse limite ficasse abaixo de
+$0{,}25$**. Como $0{,}25 \le 0{,}316$, o valor $0{,}25$ continua compatível com os dados e
+**não rejeitamos $H_0$**.
+
+```#| label: fig-ex2
+#| fig-cap: "Normal padrão: região de rejeição (1%, unilateral à esquerda) e estatística Z0 ≈ -0,16, longe da R.C."
+#| fig-width: 7
+#| fig-height: 4
+xg   <- seq(-4, 4, length.out = 600)
+dz   <- data.frame(x = xg, y = dnorm(xg))
+rc   <- subset(dz, x <= z_crit)
+
+ggplot(dz, aes(x, y)) +
+  geom_area(data = rc, fill = "tomato", alpha = 0.5) +
+  geom_line(linewidth = 0.9, color = "#2c3e50") +
+  geom_vline(xintercept = z_crit, linetype = "dashed", color = "tomato") +
+  geom_vline(xintercept = z0, linetype = "solid", color = "steelblue") +
+  annotate("text", x = z_crit - 0.15, y = 0.18, hjust = 1, size = 3.2,
+           color = "darkred", label = "RC: Z < -2,33") +
+  annotate("text", x = z0 + 0.15, y = 0.32, hjust = 0, size = 3.2,
+           color = "steelblue", label = "Z0 ≈ -0,16") +
+  labs(title = "Exercício 2 — região crítica e estatística observada",
+       x = "Estatística Z", y = "Densidade") +
+  theme_minimal(base_size = 12)
+```
+
+### Conclusão no contexto
+
+As três abordagens concordam: ao nível de 1%, **não há evidência suficiente para rejeitar
+a alegação** de que pelo menos 25% dos adultos são fumantes. A proporção observada
+($24{,}5\%$) está apenas $0{,}5$ ponto percentual abaixo de $25\%$ — uma diferença
+perfeitamente compatível com a variabilidade amostral. Portanto, com base nesta amostra,
+**a alegação da pesquisa se sustenta**.
+
+## Resumo das respostas
+
+```#| label: resumo
+resumo <- tibble::tribble(
+  ~Exercício, ~`Tradicional`, ~`Valor-P`, ~`IC`, ~`Decisão`,
+  "1 — média (t, gl=6)",
+  "|T0|≈20,58 > 2,447",
+  "≈ 10⁻⁶ < 0,05",
+  "81 ∉ [142,7; 159,3]",
+  "Rejeita H0",
+  "2 — proporção (Z)",
+  "Z0≈-0,16 > -2,33",
+  "≈ 0,435 > 0,01",
+  "0,25 ≤ 0,316 (lim. sup.)",
+  "Não rejeita H0"
+)
+
+resumo %>%
+  gt() %>%
+  tab_header(title = md("**Resumo — TH para uma população**")) %>%
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_body(columns = Exercício)) %>%
+  cols_align(align = "left") %>%
+  opt_align_table_header(align = "left")
+```

@@ -1,0 +1,311 @@
+
+```#| message: false
+#| warning: false
+library(gt)
+library(tibble)
+```
+
+## Exercício 1) [3 pontos] — Interpretação do intervalo de confiança
+
+Uma amostra de 300 alunas do Ensino Médio foi pesquisada sobre o uso do cinto de
+segurança. Um IC de 95% para a proporção $p$ de todas as alunas que **sempre** usam
+o cinto foi calculado como $[0{,}612;\ 0{,}668]$.^[O limite superior considerado é $0{,}668$.]
+
+**A afirmação está correta?** *"A probabilidade da proporção de alunas estar entre
+0,612 e 0,668 é de 0,95."*
+
+### Resposta
+
+**A afirmação está INCORRETA.** O erro é tratar o parâmetro $p$ como se fosse uma
+variável aleatória.
+
+- O parâmetro populacional $p$ é uma **constante desconhecida**, porém fixa. Ele não
+  tem distribuição de probabilidade: ou ele pertence ao intervalo $[0{,}612;\ 0{,}668]$
+  ou não pertence. Logo, depois de calculado, esse intervalo específico **não admite**
+  uma probabilidade $0{,}95$ de conter $p$ — essa probabilidade é, na verdade, $0$ ou $1$
+  (só não sabemos qual).
+
+- O que é aleatório é o **intervalo** (seus extremos dependem da amostra sorteada). A
+  confiança de $95\%$ é uma propriedade do **procedimento**, não deste intervalo
+  isolado.
+
+**Interpretação correta (frequentista):** se repetíssemos a pesquisa muitas vezes,
+sorteando novas amostras de 300 alunas e construindo um IC de 95% a cada vez,
+**aproximadamente 95% desses intervalos conteriam o verdadeiro valor de $p$**. Dizemos
+então que temos 95% de confiança de que o intervalo $[0{,}612;\ 0{,}668]$ contém a
+verdadeira proporção.
+
+## Exercício 2) [5 pontos] — Erros do Tipo I e II
+
+A proporção nacional de desemprego é de 9%. O prefeito quer avaliar se na **sua cidade**
+a proporção $p$ de desemprego é **diferente** de 9%.
+
+### Hipóteses de interesse [1 ponto]
+
+Como se quer detectar uma diferença (em qualquer direção), o teste é **bilateral**:
+
+$$
+H_0:\ p = 0{,}09 \qquad \text{versus} \qquad H_1:\ p \neq 0{,}09.
+$$
+
+Aqui $p$ é a verdadeira proporção de desempregados na cidade do interior.
+
+### Erro do Tipo I [2 pontos]
+
+O Erro do Tipo I ocorre quando **rejeitamos $H_0$ sendo ela verdadeira**.
+
+> **No contexto:** concluir que a proporção de desemprego na cidade é **diferente** de
+> 9%, quando na realidade ela é **igual** a 9% (igual à nacional).
+
+### Erro do Tipo II [2 pontos]
+
+O Erro do Tipo II ocorre quando **não rejeitamos $H_0$ sendo ela falsa**.
+
+> **No contexto:** concluir que a proporção de desemprego na cidade é **igual** a 9%
+> (não detectar diferença), quando na realidade ela é **diferente** de 9%.
+
+## Exercício 3) [2 pontos] — Teste do COMPRADOR
+
+O fabricante afirma que a carga de ruptura média é de **pelo menos 90 kg**
+($\mu \ge 90$). O comprador testou 20 unidades e obteve média amostral de 88,4 kg.
+Pede-se o teste sob o ponto de vista do **comprador**.
+
+### Resposta
+
+Seja $\mu$ a carga de ruptura média populacional. O comprador **desconfia** da afirmação
+do fabricante e quer reunir **evidência de que o produto é deficiente** ($\mu < 90$). Pela
+regra de colocar no $H_1$ aquilo que se deseja **comprovar** (a conclusão "forte", obtida
+ao rejeitar $H_0$), o teste do comprador é **unilateral à esquerda**:
+
+$$
+H_0:\ \mu \ge 90 \qquad \text{versus} \qquad H_1:\ \mu < 90.
+$$
+
+Assim, o comprador só "acusa"/rejeita o lote quando há **forte evidência** de que
+$\mu < 90$, controlando em $\alpha$ a probabilidade de recusar injustamente um produto
+adequado. A média observada $\bar{x} = 88{,}4 < 90$ aponta justamente na direção de $H_1$.
+
+> Como $\sigma$ é desconhecido, $n = 20$ é pequeno e supõe-se normalidade, a estatística
+> apropriada seria $T = \dfrac{\bar{X} - 90}{S/\sqrt{n}} \sim t_{(n-1)} = t_{(19)}$ sob
+> $H_0$, rejeitando-se $H_0$ para valores suficientemente pequenos (negativos) de $T$.
+
+## Exercício 4) [5 pontos] — IC para a nota média
+
+Notas de 10 alunos: 65, 74, 78, 86, 59, 84, 75, 72, 81, 83, com
+$\sum_{i=1}^{10} x_i = 757$ e $\sum_{i=1}^{10} x_i^2 = 57977$. Coeficiente de confiança
+$\gamma = 0{,}95$.
+
+### (a) [1 ponto] Estimativas pontuais
+
+A média amostral e a variância amostral (corrigida) são:
+
+$$
+\bar{x} = \frac{\sum x_i}{n} = \frac{757}{10} = 75{,}7,
+\qquad
+s^2 = \frac{1}{n-1}\!\left(\sum x_i^2 - \frac{(\sum x_i)^2}{n}\right).
+$$
+
+```n     <- 10
+soma  <- 757
+somaq <- 57977
+
+xbar <- soma / n
+s2   <- (somaq - soma^2 / n) / (n - 1)
+s    <- sqrt(s2)
+
+c(media = xbar, variancia = s2, desvio_padrao = s)
+```
+
+$$
+s^2 = \frac{1}{9}\!\left(57977 - \frac{757^2}{10}\right)
+    = \frac{1}{9}\,(57977 - 57304{,}9)
+    = \frac{672{,}1}{9} \approx 74{,}68,
+\qquad s \approx 8{,}64.
+$$
+
+### (b) [2 pontos] Intervalo de confiança para $\mu$
+
+**Suposições:** a amostra é aleatória de uma população **Normal**, com **variância
+desconhecida** e $n = 10$ pequeno. Logo, usamos a distribuição $t$ de Student:
+
+$$
+IC(\mu;\ 0{,}95) = \bar{x} \ \pm\ t_{0{,}025,\ 9}\,\frac{s}{\sqrt{n}}.
+$$
+
+Da tabela, $|t_{0{,}025,\ 9}| = 2{,}262157$ (são $n-1 = 9$ graus de liberdade e
+$\alpha/2 = 0{,}025$).
+
+```t_crit <- 2.262157          # |t_{0.025, 9}|
+erro   <- t_crit * s / sqrt(n)
+ic     <- c(xbar - erro, xbar + erro)
+
+cat(sprintf("Erro (margem): %.4f\n", erro))
+cat(sprintf("IC 95%%: [%.4f ; %.4f]\n", ic[1], ic[2]))
+```
+
+$$
+IC(\mu;\ 0{,}95) = 75{,}7 \ \pm\ 2{,}262157 \cdot \frac{8{,}6416}{\sqrt{10}}
+= 75{,}7 \pm 6{,}18 = [\,69{,}52;\ 81{,}88\,].
+$$
+
+### (c) [2 pontos] Usando o IC para verificar a suspeita
+
+Os especialistas desconfiam que a média **mudou** em relação ao valor histórico
+$\mu_0 = 80$. As hipóteses são:
+
+$$
+H_0:\ \mu = 80 \qquad \text{versus} \qquad H_1:\ \mu \neq 80.
+$$
+
+**Regra de decisão pelo IC:** como o IC bilateral de 95% e o teste bilateral são
+equivalentes, rejeitamos $H_0$ ao nível $\alpha = 1 - \gamma = 0{,}05$ **se, e somente se,
+$\mu_0 = 80$ estiver fora do intervalo**.
+
+```mu0 <- 80
+dentro <- mu0 >= ic[1] && mu0 <= ic[2]
+cat(sprintf("mu0 = 80 está dentro do IC [%.2f ; %.2f]? %s\n",
+            ic[1], ic[2], ifelse(dentro, "SIM", "NÃO")))
+```
+
+- **Conclusão [0,5]:** como $80 \in [69{,}52;\ 81{,}88]$, **não rejeitamos $H_0$**. Não há
+  evidência (a esse nível) de que a nota média tenha se alterado em relação a 80.
+- **Nível de significância [0,5]:** $\alpha = 1 - \gamma = 0{,}05$ (5%).
+
+## Exercício 5) [5 pontos] — Proporção de enjoo
+
+O medicamento original provoca enjoo em 70% dos pacientes. A nova fórmula espera
+**diminuir** essa proporção.
+
+### (a) [2 pontos] Formulação do teste
+
+Seja $p$ a **verdadeira proporção de pacientes que apresentam enjoo com o novo
+medicamento**. Como se quer comprovar uma **redução**, o teste é unilateral à esquerda:
+
+$$
+H_0:\ p = 0{,}70 \qquad \text{versus} \qquad H_1:\ p < 0{,}70.
+$$
+
+### (b) [3 pontos] Decisão pelo valor-P
+
+Dados: $n = 60$ pacientes, $x = 28$ com enjoo, $\alpha = 0{,}05$.
+
+A proporção amostral é $\hat{p} = 28/60$. Sob $H_0$ (e com $n$ grande), pelo TCL:
+
+$$
+Z_0 = \frac{\hat{p} - p_0}{\sqrt{\dfrac{p_0(1-p_0)}{n}}} \ \stackrel{H_0}{\approx}\ N(0,1).
+$$
+
+```n   <- 60
+x   <- 28
+p0  <- 0.70
+phat <- x / n
+
+z0 <- (phat - p0) / sqrt(p0 * (1 - p0) / n)
+valor_p <- pnorm(z0)        # H1: p < 0,70  => cauda inferior
+
+cat(sprintf("phat   = %.4f\n", phat))
+cat(sprintf("Z0     = %.4f\n", z0))
+cat(sprintf("valor-P = P(Z < %.4f) = %.6f\n", z0, valor_p))
+```
+
+$$
+\hat{p} = \frac{28}{60} \approx 0{,}4667,
+\qquad
+Z_0 = \frac{0{,}4667 - 0{,}70}{\sqrt{0{,}70\cdot 0{,}30/60}}
+= \frac{-0{,}2333}{0{,}05916} \approx -3{,}94.
+$$
+
+$$
+\text{valor-P} = P(Z < -3{,}94) \approx 0{,}00004.
+$$
+
+**Decisão:** como o valor-P $\approx 0{,}00004 < \alpha = 0{,}05$, **rejeitamos $H_0$**.
+
+> **Conclusão no contexto:** há forte evidência de que a alteração na fórmula
+> **reduziu** a proporção de pacientes com enjoo para abaixo de 70%.
+
+## Exercício 6) [5 pontos] — Tamanho amostral (concentração de cloro)
+
+Para recém-nascidos a termo: $\mu_0 = 210$ e $\sigma = 20$ (conhecido). Em prematuros,
+mesmo $\sigma$, mas suspeita-se de média **menor**. Modelo Normal.
+
+### (a) [1 ponto] Hipóteses
+
+$$
+H_0:\ \mu = 210 \qquad \text{versus} \qquad H_1:\ \mu < 210.
+$$
+
+### (b) [4 pontos] Determinação de $n$
+
+Queremos simultaneamente $\alpha = 10\%$ e $\beta(200) = 5\%$ (poder de 95% em
+$\mu_1 = 200$). O teste rejeita $H_0$ quando $\bar{X} \le c$. As duas condições são:
+
+$$
+\underbrace{P(\bar{X} \le c \mid \mu = 210) = \alpha}_{\text{Erro I}}
+\qquad\text{e}\qquad
+\underbrace{P(\bar{X} > c \mid \mu = 200) = \beta}_{\text{Erro II}}.
+$$
+
+Padronizando (com $\sigma/\sqrt{n}$) e usando $z_{0{,}10} = 1{,}281552$ e
+$z_{0{,}05} = 1{,}644854$ (em módulo):
+
+$$
+c = 210 - z_{0{,}10}\frac{\sigma}{\sqrt{n}}
+\qquad\text{e}\qquad
+c = 200 + z_{0{,}05}\frac{\sigma}{\sqrt{n}}.
+$$
+
+Igualando as duas expressões de $c$ e isolando $n$:
+
+$$
+210 - 200 = \big(z_{0{,}10} + z_{0{,}05}\big)\frac{\sigma}{\sqrt{n}}
+\ \Longrightarrow\
+n = \left[\frac{(z_{0{,}10} + z_{0{,}05})\,\sigma}{\mu_0 - \mu_1}\right]^2.
+$$
+
+```sigma <- 20
+mu0   <- 210
+mu1   <- 200
+z_alpha <- 1.281552   # z_{0,10}
+z_beta  <- 1.644854   # z_{0,05}
+
+n_calc <- ((z_alpha + z_beta) * sigma / (mu0 - mu1))^2
+n_final <- ceiling(n_calc)
+
+cat(sprintf("n (exato)     = %.4f\n", n_calc))
+cat(sprintf("n (arredonda) = %d\n", n_final))
+```
+
+$$
+n = \left[\frac{(1{,}281552 + 1{,}644854)\cdot 20}{210 - 200}\right]^2
+= \left(\frac{58{,}528}{10}\right)^2
+= (5{,}8528)^2 \approx 34{,}26.
+$$
+
+Como $n$ deve ser inteiro e as restrições precisam ser satisfeitas, arredondamos
+**para cima**:
+
+$$
+\boxed{n = 35 \text{ recém-nascidos prematuros.}}
+$$
+
+## Resumo das respostas
+
+```resumo <- tibble::tribble(
+  ~Exercício, ~Resposta,
+  "1", "Afirmação INCORRETA: p é constante; a confiança é do procedimento (95% dos ICs conteriam p).",
+  "2", "H0: p = 0,09 vs H1: p ≠ 0,09. Erro I: dizer que difere de 9% sendo igual; Erro II: dizer que é igual sendo diferente.",
+  "3", "Comprador: H0: μ ≥ 90 vs H1: μ < 90 (unilateral à esquerda).",
+  "4", "x̄ = 75,7; s² ≈ 74,68; IC95% ≈ [69,52; 81,88]; não rejeita H0: μ=80 (α=5%).",
+  "5", "H0: p = 0,70 vs H1: p < 0,70; Z0 ≈ -3,94; valor-P ≈ 0,00004 → rejeita H0 (reduz enjoo).",
+  "6", "H0: μ=210 vs H1: μ<210; n ≈ 34,26 → n = 35 prematuros."
+)
+
+resumo %>%
+  gt() %>%
+  tab_header(title = md("**Resumo — Prova 2 (2024/3)**")) %>%
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_body(columns = Exercício)) %>%
+  cols_align(align = "left", columns = Resposta) %>%
+  opt_align_table_header(align = "left")
+```

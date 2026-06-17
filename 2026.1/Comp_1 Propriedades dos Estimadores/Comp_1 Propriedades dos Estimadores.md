@@ -1,0 +1,251 @@
+
+## 1. Fundamentação Analítica dos Estimadores
+
+Neste estudo, avaliamos dois estimadores para o centro $\theta$ de duas distribuições:
+
+-   **Média Amostral (**$T_1$): $T_1 = \frac{1}{n} \sum_{i=1}^{n} X_i$
+
+-   **Meio da Amplitude (**$T_2$): $T_2 = \frac{X_{(1)} + X_{(n)}}{2}$
+
+Para entender o comportamento empírico, precisamos olhar para as propriedades teóricas esperadas:
+
+-   **Viés:** Como tanto a distribuição Normal quanto a Uniforme são simétricas em torno de seu centro, a esperança de ambos os estimadores é igual ao verdadeiro parâmetro ($E[T_1] = E[T_2] = \theta$). Portanto, **ambos são não viesados** nos dois cenários.
+
+-   **Variância:** A variância da média amostral ($T_1$) é sempre $Var(T_1) = \frac{\sigma^2}{n}$, decaindo linearmente com $n$.
+
+    -   A variância do meio da amplitude ($T_2$) depende fortemente das caudas da distribuição. Na Uniforme (caudas curtas e limitadas), ela decai a uma taxa bem rápida. Na Normal (caudas infinitas), ela decai de forma extremamente lenta.
+
+-   **Consistência (Desigualdade de Chebyshev):** A Desigualdade de Chebyshev nos diz que $P(|T_n - \theta| \ge \epsilon) \le \frac{Var(T_n)}{\epsilon^2}$. Como ambos os estimadores são não viesados, a condição para que sejam consistentes é simplesmente que suas variâncias convirjam para zero quando $n \to \infty$.
+
+```library(gt)
+library(tibble)
+```
+
+```simular_estimadores <- function(cenario = c("normal", "uniforme"), B = 10000) {
+
+# Definindo os tamanhos de amostra ----------------------------------------
+  tamanhos_n <- c(5, 10, 20, 50, 100, 200, 500, 1000)
+  theta_verdadeiro <- 0
+  
+
+# Seleciona a função geradora baseada no cenário --------------------------
+  cenario <- match.arg(cenario)
+  gerar_dados <- if (cenario == "normal") {
+    function(n) rnorm(n, mean = 0, sd = sqrt(1/3))
+  } else {
+    function(n) runif(n, min = -1, max = 1)
+  }
+  
+
+# Função interna para calcular métricas por valor de n ----------------
+  processar_n <- function(n) {
+    # Gera B amostras de tamanho n em uma matriz (n linhas, B colunas)
+    amostras <- matrix(gerar_dados(n * B), 
+                       nrow = n, 
+                       ncol = B, 
+                       byrow = FALSE)
+    
+    # Calcula os estimadores para as B colunas
+    theta_1_hat <- colMeans(x = amostras)
+    theta_2_hat <- (apply(X = amostras, MARGIN = 2, FUN = min)
+                    + apply(X = amostras, MARGIN = 2, FUN = max)) / 2
+    
+    # Função para calcular as métricas (viés, var, eqm)
+    calcular_metricas <- function(estimativas) {
+      vies <- mean(x = estimativas) - theta_verdadeiro
+      variancia <- var(x = estimativas)
+      eqm <- mean(x = (estimativas - theta_verdadeiro)^2)
+      return(c(vies = vies, var = variancia, eqm = eqm))
+    }
+    
+    res_t1 <- calcular_metricas(theta_1_hat)
+    res_t2 <- calcular_metricas(theta_2_hat)
+    
+    return(c(res_t1, res_t2))
+  }
+  
+  # Executa para todos os n e organiza o resultado
+  resultados <- vapply(tamanhos_n, processar_n, numeric(6))
+  colnames(resultados) <- paste0("n=", tamanhos_n)
+  rownames(resultados) <- c("T1_Vies", "T1_Var", "T1_EQM", 
+                            "T2_Vies", "T2_Var", "T2_EQM")
+  
+  return(as.data.frame(t(resultados)))
+}
+```
+
+## 2. Resultados: Cenário Normal
+
+Aqui simulamos os dados baseados em uma distribuição $N(0, 1/3)$.
+
+```resultado_normal <- simular_estimadores("normal")
+```
+
+```# Formatação da tabela para o cenário Normal
+tabela_normal <- resultado_normal %>%
+  rownames_to_column(var = "Metrica") %>%
+  gt() %>%
+  tab_header(
+    title = md("**Simulação de Estimadores: Distribuição Normal**"),
+    subtitle = md("Comparação de Viés, Variância e EQM para $T_1$ e $T_2$")
+  ) %>%
+  fmt_number(
+    columns = -Metrica,
+    decimals = 4
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Metrica)
+  ) %>%
+  opt_align_table_header(align = "left")
+
+tabela_normal
+```
+
+```#| message: false
+#| warning: false
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+library(ggdist)
+```
+
+```gerar_painel_2X2 <- function(dados_sumarizados, cenario = c("normal", "uniforme"), B = 10000) {
+  cenario <- match.arg(cenario)
+  
+  # 1. Dados de linha (Vies, Var, EQM)
+  df_linha <- dados_sumarizados %>%
+    mutate(n_val = as.numeric(gsub("n=", "", rownames(dados_sumarizados)))) %>%
+    pivot_longer(cols = -n_val, names_to = "Metrica", values_to = "Valor") %>%
+    separate(Metrica, into = c("Estimador", "Tipo"), sep = "_")
+  
+  # 2. Dados de Distribuição (n seletivos: 10, 100, 1000)
+  n_rep <- c(10, 100, 1000) 
+  gerar <- if(cenario == "normal") function(n) rnorm(n, 0, sqrt(1/3)) else function(n) runif(n, -1, 1)
+  
+  df_dist <- data.frame()
+  for(n in n_rep) {
+    amostras <- matrix(gerar(n * B), nrow = n)
+    df_dist <- rbind(df_dist, data.frame(
+      n_val = as.factor(n), 
+      T1 = colMeans(amostras), 
+      T2 = (apply(amostras, 2, min) + apply(amostras, 2, max)) / 2
+    ))
+  }
+  
+  df_dist_long <- df_dist %>% 
+    pivot_longer(cols = c(T1, T2), names_to = "Estimador", values_to = "Estimativa")
+  
+  # --- Estilo e Legendas ---
+  cores <- c("T1" = "#2c3e50", "T2" = "#e67e22") 
+  nomes_legenda <- c("T1" = "Média Amostral", "T2" = "Meio da Amplitude")
+  
+  teminha <- theme_minimal() + 
+    theme(
+      legend.position = "none", 
+      plot.title = element_text(size = 11, face = "bold"),
+      axis.title = element_text(face = "bold") 
+    )
+  
+  # Gráficos de Linha
+  g_vies <- ggplot(filter(df_linha, Tipo == "Vies"), aes(x = n_val, y = Valor, color = Estimador)) +
+    geom_line() + geom_point() + 
+    labs(title = "Viés", x = "n", y = "Valor") + 
+    scale_color_manual(values = cores, labels = nomes_legenda) + 
+    teminha
+  
+  g_var <- ggplot(filter(df_linha, Tipo == "Var"), aes(x = n_val, y = Valor, color = Estimador)) +
+    geom_line() + geom_point() + 
+    labs(title = "Variância", x = "n", y = "Valor") + 
+    scale_color_manual(values = cores, labels = nomes_legenda) + 
+    teminha
+  
+  g_eqm <- ggplot(filter(df_linha, Tipo == "EQM"), aes(x = n_val, y = Valor, color = Estimador)) +
+    geom_line() + geom_point() + 
+    labs(title = "EQM", x = "n", y = "Valor") + 
+    scale_color_manual(values = cores, labels = nomes_legenda) + 
+    teminha
+  
+  # 4. Gráfico de Consistência
+  g_dist <- ggplot(df_dist_long, aes(x = n_val, y = Estimativa, fill = Estimador)) +
+    stat_halfeye(side = "right", width = 0.8, justification = 0, alpha = 0.6, point_colour = NA) +
+    # Adicionando o linetype dentro do aes() para forçar a criação na legenda
+    geom_hline(aes(yintercept = 0, linetype = "Parâmetro (\u03b8 = 0)"), color = "black", alpha = 0.5) +
+    scale_fill_manual(values = cores, labels = nomes_legenda) +
+    scale_linetype_manual(values = "dashed") + # Define que essa linha mapeada será tracejada
+    labs(title = "Consistência", x = "n", y = "Estimativa") + # Rótulo do eixo X ajustado
+    teminha +
+    theme(
+      axis.text.y = element_blank(),        
+      axis.ticks.y = element_blank(),       
+      panel.grid.major.y = element_blank(), 
+      panel.grid.minor.y = element_blank()
+    )
+  
+  # Montagem Final com Patchwork
+  (g_vies + g_var) / (g_eqm + g_dist) + 
+    plot_layout(guides = 'collect') & 
+    theme(legend.position = 'bottom', legend.title = element_blank())
+}
+```
+
+```#| label: fig-painel-normal
+#| fig-cap: "Comportamento dos estimadores na distribuição Normal."
+#| fig-width: 12
+#| fig-height: 7
+#| column: page-right
+
+gerar_painel_2X2(dados_sumarizados = resultado_normal, cenario = "normal")
+```
+
+## 3. Resultados: Cenário Uniforme
+
+Agora, vamos gerar os dados para a distribuição Uniforme $U(-1, 1)$ e avaliar a diferença.
+
+Tabela de Resultados
+
+```# Gerando os dados para a Uniforme
+resultado_uniforme <- simular_estimadores("uniforme")
+
+# Formatação da tabela para o cenário Uniforme
+tabela_uniforme <- resultado_uniforme %>%
+  rownames_to_column(var = "Metrica") %>%
+  gt() %>%
+  tab_header(
+    title = md("**Simulação de Estimadores: Distribuição Uniforme**"),
+    subtitle = md("Comparação de Viés, Variância e EQM para $T_1$ e $T_2$")
+  ) %>%
+  fmt_number(
+    columns = -Metrica,
+    decimals = 5
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Metrica)
+  ) %>%
+  opt_align_table_header(align = "left")
+
+tabela_uniforme
+```
+
+```#| label: fig-painel-uniforme
+#| fig-cap: "Comportamento dos estimadores na distribuição Uniforme."
+#| fig-width: 12
+#| fig-height: 7
+#| column: page-right
+
+gerar_painel_2X2(dados_sumarizados = resultado_uniforme, cenario = "uniforme")
+```
+
+### Análise Empírica da Uniforme
+
+No cenário Uniforme, o jogo vira completamente. O gráfico e a tabela mostram que o Meio da Amplitude ($T_2$) esmaga a Média Amostral ($T_1$) em termos de eficiência (menor variância e menor EQM).
+
+Como a distribuição Uniforme tem um limite estrito (não há probabilidade de existirem valores além de -1 e 1), os valores mínimo e máximo da amostra rapidamente "encostam" nos limites da população conforme $n$ cresce.
+
+## 4. Conclusão
+
+A simulação ilustra perfeitamente um princípio fundamental da inferência estatística: **não existe um estimador universalmente superior**.
+
+Embora a Média Amostral seja robusta e consistente para ambas as distribuições, ela é subótima em cenários de caudas curtas como a Uniforme. Por outro lado, o Meio da Amplitude é altamente eficiente na Uniforme, mas se torna um estimador perigoso e ineficiente em distribuições com caudas assintóticas como a Normal. Conhecer a natureza da distribuição subjacente (ou assumir premissas razoáveis sobre ela) é indispensável para a escolha do estimador que garantirá a menor variância e o menor Erro Quadrático Médio.

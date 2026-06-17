@@ -1,0 +1,323 @@
+
+```#| message: false
+#| warning: false
+library(gt)
+library(tibble)
+```
+
+> **Contexto.** Um *Teste A/B* nada mais é do que um teste estatístico para **duas
+> amostras**, comparando duas proporções ou duas médias para decidir se a diferença
+> observada é **estatisticamente significativa** ou apenas fruto da variabilidade
+> amostral.
+
+## Questão 1) [10 pontos] — Duas proporções (landing page)
+
+| Página | Visitantes ($n$) | Conversões ($x$) |
+|:------:|:----------------:|:----------------:|
+| A      | 1.000            | 230              |
+| B      | 1.200            | 264              |
+
+### (a) [2 pontos] Estimativas das proporções
+
+$$
+\hat{p}_A = \frac{x_A}{n_A} = \frac{230}{1000} = 0{,}23,
+\qquad
+\hat{p}_B = \frac{x_B}{n_B} = \frac{264}{1200} = 0{,}22.
+$$
+
+```nA <- 1000; xA <- 230
+nB <- 1200; xB <- 264
+
+phatA <- xA / nA
+phatB <- xB / nB
+c(phatA = phatA, phatB = phatB)
+```
+
+A página A converteu 23% dos visitantes e a página B, 22%.
+
+### (b) [2 pontos] Hipóteses de interesse
+
+Queremos verificar se há **diferença** entre as taxas de conversão das duas páginas
+(teste **bilateral**):
+
+$$
+H_0:\ p_A = p_B \qquad \text{versus} \qquad H_1:\ p_A \neq p_B.
+$$
+
+### (c) [3 pontos] Teste ao nível de 5% e região crítica
+
+Sob $H_0$ as proporções são iguais, então usamos a **proporção combinada (pooled)** para
+estimar o erro-padrão:
+
+$$
+\hat{p} = \frac{x_A + x_B}{n_A + n_B},
+\qquad
+Z_0 = \frac{\hat{p}_A - \hat{p}_B}{\sqrt{\hat{p}(1-\hat{p})\left(\dfrac{1}{n_A}+\dfrac{1}{n_B}\right)}}
+\ \stackrel{H_0}{\approx}\ N(0,1).
+$$
+
+```phat_pool <- (xA + xB) / (nA + nB)
+se        <- sqrt(phat_pool * (1 - phat_pool) * (1/nA + 1/nB))
+z0        <- (phatA - phatB) / se
+z_crit    <- qnorm(0.975)          # 1,96
+
+cat(sprintf("p combinada = %.6f\n", phat_pool))
+cat(sprintf("erro-padrão = %.6f\n", se))
+cat(sprintf("Z0          = %.4f\n", z0))
+cat(sprintf("z crítico   = %.4f\n", z_crit))
+```
+
+$$
+\hat{p} = \frac{230 + 264}{1000 + 1200} = \frac{494}{2200} \approx 0{,}2245,
+\qquad
+Z_0 = \frac{0{,}23 - 0{,}22}{\sqrt{0{,}2245\cdot 0{,}7755\left(\frac{1}{1000}+\frac{1}{1200}\right)}}
+\approx 0{,}56.
+$$
+
+**Região crítica** (bilateral, $\alpha = 0{,}05$, valor tabelado $z_{0{,}025} = 1{,}96$):
+
+$$
+RC = \{\, Z_0 : |Z_0| > 1{,}96 \,\} = (-\infty,\,-1{,}96)\ \cup\ (1{,}96,\,+\infty).
+$$
+
+Como $Z_0 \approx 0{,}56 \notin RC$, **não rejeitamos $H_0$**.
+
+```valor_p <- 2 * (1 - pnorm(abs(z0)))
+cat(sprintf("valor-P (bilateral) = %.4f\n", valor_p))
+```
+
+O valor-P $\approx 0{,}58 \gg 0{,}05$ confirma a decisão.
+
+### (d) [3 pontos] Conclusão
+
+Ao nível de 5%, **não há evidência de diferença** entre as taxas de conversão das duas
+páginas. Embora a página A tenha apresentado conversão observada ligeiramente maior
+($23\%$ contra $22\%$), essa diferença de $1$ ponto percentual está dentro da
+variabilidade amostral esperada. Estatisticamente, **nenhuma das páginas pode ser
+considerada melhor** que a outra — o resultado é compatível com o acaso.
+
+## Questão 2) [10 pontos] — Duas médias independentes (tempo no site)
+
+| Grupo | $n$ | Média $\bar{x}$ | Desvio padrão $s$ |
+|:-----:|:---:|:---------------:|:-----------------:|
+| A     | 40  | 3,5 min         | 1,0               |
+| B     | 45  | 4,1 min         | 1,2               |
+
+Amostras **independentes**, populações **Normais**. Objetivo: verificar se a nova
+homepage (Grupo B) **aumentou** o tempo médio.
+
+```nA <- 40; xbarA <- 3.5; sA <- 1.0
+nB <- 45; xbarB <- 4.1; sB <- 1.2
+```
+
+### (a) [2 pontos] Hipóteses de interesse
+
+"Aumentou" significa $\mu_B > \mu_A$, ou seja, $\mu_A - \mu_B < 0$. Teste **unilateral**:
+
+$$
+H_0:\ \mu_A = \mu_B \qquad \text{versus} \qquad H_1:\ \mu_A < \mu_B.
+$$
+
+### (b) [2 pontos] IC de 95% para a razão das variâncias $\sigma_A^2/\sigma_B^2$
+
+A quantidade pivotal é $\dfrac{S_A^2/\sigma_A^2}{S_B^2/\sigma_B^2} \sim F_{(n_A-1,\,n_B-1)}$,
+o que conduz ao intervalo:
+
+$$
+IC\!\left(\frac{\sigma_A^2}{\sigma_B^2};\,0{,}95\right) =
+\left[\ \frac{s_A^2/s_B^2}{F_{0{,}025;\,39,\,44}}\ ;\
+\frac{s_A^2}{s_B^2}\cdot F_{0{,}025;\,44,\,39}\ \right].
+$$
+
+```df_A <- nA - 1   # 39
+df_B <- nB - 1   # 44
+razao_s2 <- sA^2 / sB^2          # = 1 / 1,44
+
+# Quantis F exatos (cauda superior 0,025)
+F_sup_AB <- qf(0.975, df_A, df_B)   # F_{0,025; 39,44}
+F_sup_BA <- qf(0.975, df_B, df_A)   # F_{0,025; 44,39}
+
+ic_inf <- razao_s2 / F_sup_AB
+ic_sup <- razao_s2 * F_sup_BA
+
+cat(sprintf("s_A^2/s_B^2          = %.4f\n", razao_s2))
+cat(sprintf("F_{0,025; 39,44}     = %.4f\n", F_sup_AB))
+cat(sprintf("F_{0,025; 44,39}     = %.4f\n", F_sup_BA))
+cat(sprintf("IC 95%% (sigA^2/sigB^2): [%.4f ; %.4f]\n", ic_inf, ic_sup))
+```
+
+> **À mão**, usa-se a tabela: no limite superior, $F_{0{,}025;\,44,39} = 1{,}866215$
+> (linha $df_1=44,\ df_2=39$); no inferior, o quantil $F_{0{,}025;\,39,44}$ é obtido pela
+> dica $F_{\alpha,df_1,df_2} = 1/F_{1-\alpha,df_2,df_1}$. Chega-se praticamente ao mesmo
+> intervalo calculado acima — e, em todo caso, **ele contém 1**.
+
+**Interpretação:** o IC para $\sigma_A^2/\sigma_B^2$ **contém o valor 1**. Logo, não há
+evidência de que as variâncias populacionais sejam diferentes — é **razoável supor
+variâncias iguais (homocedasticidade)**, o que justifica o uso do teste $t$ com
+variância combinada (*pooled*) no item seguinte.
+
+### (c) [2 pontos] Teste ao nível de 5% e região crítica
+
+Com variâncias iguais, usamos a variância combinada e a estatística $t$:
+
+$$
+S_p^2 = \frac{(n_A-1)s_A^2 + (n_B-1)s_B^2}{n_A+n_B-2},
+\qquad
+T_0 = \frac{\bar{x}_A - \bar{x}_B}{S_p\sqrt{\dfrac{1}{n_A}+\dfrac{1}{n_B}}}
+\ \stackrel{H_0}{\sim}\ t_{(n_A+n_B-2)}.
+$$
+
+```gl   <- nA + nB - 2                 # 83
+sp2  <- ((nA-1)*sA^2 + (nB-1)*sB^2) / gl
+sp   <- sqrt(sp2)
+se   <- sp * sqrt(1/nA + 1/nB)
+t0   <- (xbarA - xbarB) / se
+
+# Como gl = 83 é grande, o valor crítico ~ z unilateral (tabela: 1,645)
+t_crit <- qt(0.95, gl)
+
+cat(sprintf("S_p^2 = %.4f | S_p = %.4f\n", sp2, sp))
+cat(sprintf("erro-padrão = %.4f\n", se))
+cat(sprintf("T0 = %.4f | t crítico (gl=%d) = %.4f\n", t0, gl, t_crit))
+```
+
+$$
+S_p^2 = \frac{39\cdot 1{,}0 + 44\cdot 1{,}44}{83} = \frac{102{,}36}{83} \approx 1{,}2333,
+\qquad
+T_0 = \frac{3{,}5 - 4{,}1}{1{,}1105\sqrt{\frac{1}{40}+\frac{1}{45}}} \approx -2{,}49.
+$$
+
+**Região crítica** (unilateral à esquerda, $\alpha = 0{,}05$). Como $gl = 83$ é grande,
+$t_{0{,}05;\,83} \approx z_{0{,}05} = 1{,}645$ (valor tabelado):
+
+$$
+RC = \{\, T_0 : T_0 < -1{,}645 \,\}.
+$$
+
+Como $T_0 \approx -2{,}49 < -1{,}645$, **rejeitamos $H_0$**.
+
+### (d) [2 pontos] Valor-P e conclusão se $\alpha = 1\%$
+
+```valor_p  <- pt(t0, gl)          # cauda inferior (H1: mu_A < mu_B)
+valor_pz <- pnorm(t0)           # aproximação normal
+cat(sprintf("valor-P (t, gl=%d) = %.5f\n", gl, valor_p))
+cat(sprintf("valor-P (aprox. Z) = %.5f\n", valor_pz))
+```
+
+$$
+\text{valor-P} = P(T_{83} < -2{,}49) \approx 0{,}0073.
+$$
+
+Como $\text{valor-P} \approx 0{,}0073 < 0{,}01$, **a conclusão NÃO se altera**: mesmo ao
+nível de $\alpha = 1\%$ rejeitamos $H_0$.
+
+### (e) [2 pontos] Conclusão
+
+Há evidência estatística significativa (a 5% e também a 1%) de que a nova homepage
+(Grupo B) **aumentou** o tempo médio dos usuários no site: a média observada subiu de
+$3{,}5$ para $4{,}1$ minutos, e o teste confirma que esse aumento não é apenas fruto do
+acaso.
+
+## Questão 3) [10 pontos] — Amostras pareadas (layout do checkout)
+
+Os **mesmos** 12 usuários foram medidos **antes** e **depois** da mudança de layout —
+trata-se de dados **pareados**. Trabalhamos com a diferença
+$D = \text{Antes} - \text{Depois}$:
+
+- $\bar{D} = 0{,}767$ min, $\quad s_D = 0{,}22$ min, $\quad n = 12$.
+
+```n_d   <- 12
+Dbar  <- 0.767
+s_D   <- 0.22
+```
+
+### (a) [2 pontos] Hipóteses
+
+"Reduziu o tempo" significa Antes $>$ Depois, ou seja, $\mu_D > 0$. Teste **unilateral à
+direita**:
+
+$$
+H_0:\ \mu_D = 0 \qquad \text{versus} \qquad H_1:\ \mu_D > 0.
+$$
+
+### (b) [6 pontos] Teste a 5% — região crítica, valor-P e IC
+
+A estatística do teste $t$ pareado, com $n-1 = 11$ graus de liberdade:
+
+$$
+T_0 = \frac{\bar{D} - 0}{s_D/\sqrt{n}} \ \stackrel{H_0}{\sim}\ t_{(11)}.
+$$
+
+```se_d   <- s_D / sqrt(n_d)
+t0     <- Dbar / se_d
+gl     <- n_d - 1                 # 11
+
+t_crit_uni <- 1.796               # t_{0,05; 11} (tabela, unilateral)
+t_crit_bi  <- 2.201               # t_{0,025; 11} (tabela, bilateral)
+
+valor_p <- 1 - pt(t0, gl)         # cauda superior (H1: mu_D > 0)
+
+cat(sprintf("erro-padrão = %.5f\n", se_d))
+cat(sprintf("T0 = %.4f | gl = %d\n", t0, gl))
+cat(sprintf("valor-P = P(T11 > %.2f) = %.3e\n", t0, valor_p))
+```
+
+$$
+T_0 = \frac{0{,}767}{0{,}22/\sqrt{12}} = \frac{0{,}767}{0{,}06351} \approx 12{,}08.
+$$
+
+**Região crítica** (unilateral à direita, $\alpha = 0{,}05$, $t_{0{,}05;\,11} = 1{,}796$):
+
+$$
+RC = \{\, T_0 : T_0 > 1{,}796 \,\}.
+$$
+
+Como $T_0 \approx 12{,}08 \gg 1{,}796$, **rejeitamos $H_0$**.
+
+**Valor-P:** $P(T_{11} > 12{,}08) \approx 6\times 10^{-8}$, praticamente nulo — evidência
+esmagadora contra $H_0$.
+
+**Intervalo de confiança de 95% para $\mu_D$** (bilateral,
+$t_{0{,}025;\,11} = 2{,}201$):
+
+$$
+IC(\mu_D;\,0{,}95) = \bar{D} \pm t_{0{,}025;\,11}\,\frac{s_D}{\sqrt{n}}.
+$$
+
+```erro_ic <- t_crit_bi * se_d
+ic      <- c(Dbar - erro_ic, Dbar + erro_ic)
+cat(sprintf("IC 95%% para mu_D: [%.4f ; %.4f]\n", ic[1], ic[2]))
+```
+
+$$
+IC(\mu_D;\,0{,}95) = 0{,}767 \pm 2{,}201\cdot 0{,}06351 = [\,0{,}627;\ 0{,}907\,].
+$$
+
+O intervalo está **inteiramente acima de zero**, confirmando que a redução é positiva e
+significativa.
+
+### (c) [2 pontos] Conclusão
+
+Os três critérios apontam na mesma direção (rejeitar $H_0$): $T_0 \approx 12{,}08$ cai na
+região crítica, o valor-P é praticamente nulo e o IC de 95% para $\mu_D$,
+$[0{,}627;\ 0{,}907]$, não contém o zero. Portanto, **a mudança no layout reduziu
+significativamente** o tempo médio de checkout — a redução estimada é de $\bar{D} = 0{,}767$
+min, com 95% de confiança entre $0{,}63$ e $0{,}91$ minutos.
+
+## Resumo das respostas
+
+```resumo <- tibble::tribble(
+  ~Questão, ~Resultado,
+  "1", "p̂_A = 0,23; p̂_B = 0,22. H0: p_A=p_B (bilateral). Z0 ≈ 0,56; RC: |Z|>1,96 → NÃO rejeita. Sem diferença significativa.",
+  "2", "H0: μ_A=μ_B vs H1: μ_A<μ_B. IC variâncias contém 1 (homocedástico). T0 ≈ -2,49; RC: T<-1,645 → rejeita. valor-P ≈ 0,007 (<1% também). B aumentou o tempo.",
+  "3", "Pareado. H0: μ_D=0 vs H1: μ_D>0. T0 ≈ 12,08; RC: T>1,796 → rejeita. valor-P ≈ 0; IC95% μ_D = [0,63; 0,91]. Layout reduziu o tempo."
+)
+
+resumo %>%
+  gt() %>%
+  tab_header(title = md("**Resumo — Teste A/B (2025)**")) %>%
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_body(columns = Questão)) %>%
+  cols_align(align = "left", columns = Resultado) %>%
+  opt_align_table_header(align = "left")
+```

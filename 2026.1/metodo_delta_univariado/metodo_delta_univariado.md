@@ -1,0 +1,199 @@
+
+```#| label: libs
+#| message: false
+#| warning: false
+library(gt)
+library(tibble)
+library(ggplot2)
+```
+
+## 1. Contexto e Modelo
+
+Analisamos o tempo até a falha de **bombas de infusão hospitalares**. Como esses
+dispositivos operam continuamente, interessa à equipe técnica a **probabilidade de uma
+bomba continuar funcionando após $t$ horas de uso** — a função de sobrevivência:
+
+$$
+S(t) = P(T > t).
+$$
+
+Suponha que o tempo até a falha siga uma distribuição **Exponencial** com parâmetro
+$\theta > 0$, de modo que, para uma amostra $T_1, \dots, T_n$ i.i.d.,
+
+$$
+f(t;\theta) = \theta\, e^{-\theta t}, \quad t > 0,
+\qquad\text{logo}\qquad
+S(t) = \int_t^{\infty} \theta\, e^{-\theta u}\, du = e^{-\theta t}.
+$$
+
+O objetivo é resolver os quatro itens a seguir: obter os EMV de $\theta$ e de $S(t)$ e
+suas distribuições assintóticas.
+
+## 2. EMV de $\theta$
+
+A função de verossimilhança e a log-verossimilhança são:
+
+$$
+L(\theta) = \prod_{i=1}^n \theta\, e^{-\theta T_i} = \theta^n e^{-\theta \sum_{i=1}^n T_i},
+\qquad
+\ell(\theta) = n \ln \theta - \theta \sum_{i=1}^n T_i.
+$$
+
+Derivando e igualando a zero:
+
+$$
+\ell'(\theta) = \frac{n}{\theta} - \sum_{i=1}^n T_i = 0
+\ \Longrightarrow\
+\hat{\theta} = \frac{n}{\sum_{i=1}^n T_i} = \frac{1}{\bar{T}}.
+$$
+
+A segunda derivada $\ell''(\theta) = -\,n/\theta^2 < 0$ confirma que se trata de um
+**máximo**. Portanto, o EMV de $\theta$ é $\hat{\theta} = 1/\bar{T}$.
+
+## 3. EMV de $S(t)$
+
+Pela **propriedade de invariância** dos estimadores de máxima verossimilhança, o EMV de
+uma função do parâmetro é a função avaliada no EMV. Como $S(t) = g(\theta) = e^{-\theta t}$:
+
+$$
+\widehat{S}(t) = g(\hat{\theta}) = e^{-\hat{\theta}\, t} = e^{-t/\bar{T}}.
+$$
+
+## 4. Distribuição assintótica do EMV de $\theta$
+
+Para uma única observação, a **informação de Fisher** é
+
+$$
+I(\theta) = -\,\mathbb{E}\!\left[\frac{d^2}{d\theta^2}\ln f(T;\theta)\right]
+= -\,\mathbb{E}\!\left[-\frac{1}{\theta^2}\right] = \frac{1}{\theta^2},
+$$
+
+pois $\ln f(T;\theta) = \ln\theta - \theta T$ e $\frac{d^2}{d\theta^2}\ln f = -1/\theta^2$.
+Pela teoria da **eficiência assintótica** do EMV (normalidade assintótica com variância
+igual ao inverso da informação de Fisher):
+
+$$
+\sqrt{n}\,(\hat{\theta} - \theta) \xrightarrow{d}
+N\!\left(0,\; I(\theta)^{-1}\right) = N\!\left(0,\; \theta^2\right).
+$$
+
+## 5. Distribuição assintótica do EMV de $S(t)$
+
+Aplicamos o **Método Delta univariado** à transformação $g(\theta) = e^{-\theta t}$
+(diferenciável, com $g'(\theta) = -t\, e^{-\theta t} \neq 0$). Partindo de
+$\sqrt{n}(\hat{\theta} - \theta) \xrightarrow{d} N(0, \theta^2)$:
+
+$$
+\sqrt{n}\,\bigl(\widehat{S}(t) - S(t)\bigr) \xrightarrow{d}
+N\!\left(0,\; [g'(\theta)]^2\,\theta^2\right)
+= N\!\left(0,\; \theta^2 t^2 e^{-2\theta t}\right).
+$$
+
+Em termos práticos, para $n$ grande,
+
+$$
+\widehat{S}(t) \ \approx\ N\!\left(e^{-\theta t},\ \frac{\theta^2 t^2 e^{-2\theta t}}{n}\right),
+$$
+
+o que fornece o erro-padrão estimado (plug-in) $\widehat{\text{ep}} =
+\hat{\theta}\, t\, e^{-\hat{\theta} t}/\sqrt{n}$, base para intervalos de confiança de Wald
+para $S(t)$.
+
+## 6. Validação por Simulação
+
+Para validar empiricamente as aproximações acima, realizamos um estudo de Monte Carlo.
+Adotamos $\theta = 0{,}004$ (tempo médio de vida $1/\theta = 250$ horas) e avaliamos a
+sobrevivência em $t = 200$ horas, de modo que o valor verdadeiro é
+$S(200) = e^{-0{,}8} \approx 0{,}4493$. Usamos $B = 10000$ replicações para cada $n$.
+
+```#| label: simulacao
+simular_delta_sobrevivencia <- function(theta = 0.004, t_eval = 200, B = 10000) {
+  tamanhos_n <- c(5, 10, 25, 50, 100, 250, 500, 1000)
+  S_real <- exp(-theta * t_eval)
+
+  processar_n <- function(n) {
+    amostras  <- matrix(rexp(n * B, rate = theta), nrow = n, ncol = B)
+    theta_hat <- 1 / colMeans(amostras)        # EMV de theta
+    S_hat     <- exp(-theta_hat * t_eval)       # EMV de S(t)
+
+    vies    <- mean(S_hat) - S_real
+    var_emp <- var(S_hat)
+    eqm     <- mean((S_hat - S_real)^2)
+    var_teo <- (theta^2 * t_eval^2 * exp(-2 * theta * t_eval)) / n   # delta
+
+    # Cobertura do IC de Wald 95% (erro-padrão plug-in)
+    se_delta <- (theta_hat * t_eval * exp(-theta_hat * t_eval)) / sqrt(n)
+    ic_inf <- S_hat - 1.96 * se_delta
+    ic_sup <- S_hat + 1.96 * se_delta
+    cobertura <- mean(ic_inf <= S_real & S_real <= ic_sup)
+
+    c(Vies = vies, Var_Emp = var_emp, Var_Teor = var_teo,
+      Razao = var_emp / var_teo, EQM = eqm, Cobertura = cobertura)
+  }
+
+  resultados <- vapply(tamanhos_n, processar_n, numeric(6))
+  colnames(resultados) <- paste0("n=", tamanhos_n)
+  as.data.frame(t(resultados))
+}
+
+set.seed(42)
+theta_real <- 0.004
+t_eval     <- 200
+res_sim    <- simular_delta_sobrevivencia(theta = theta_real, t_eval = t_eval)
+```
+
+```#| label: tabela
+res_sim %>%
+  rownames_to_column(var = "Tamanho") %>%
+  gt() %>%
+  tab_header(
+    title = md("**Validação do Método Delta para $\\widehat{S}(t)$**"),
+    subtitle = md("$\\theta = 0{,}004$, $t = 200$, $S(t) \\approx 0{,}4493$, $B = 10000$")
+  ) %>%
+  cols_label(
+    Tamanho = "n", Vies = "Viés", Var_Emp = "Var. Empírica",
+    Var_Teor = "Var. Teórica (Delta)", Razao = "Razão (Emp/Teor)",
+    EQM = "EQM", Cobertura = "Cobertura IC 95%"
+  ) %>%
+  fmt_number(columns = c(Vies, Var_Emp, Var_Teor, Razao, EQM), decimals = 6) %>%
+  fmt_percent(columns = Cobertura, decimals = 2) %>%
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_body(columns = Tamanho)) %>%
+  opt_align_table_header(align = "left")
+```
+
+```#| label: fig-normalidade
+#| fig-cap: "Distribuição amostral de Ŝ(t) para diferentes n. À medida que n cresce, ela se concentra em torno do valor verdadeiro (linha tracejada) e fica simétrica/normal."
+#| fig-width: 8
+#| fig-height: 4.5
+n_rep <- c(25, 100, 1000)
+df_dist <- do.call(rbind, lapply(n_rep, function(n) {
+  am <- matrix(rexp(n * 10000, rate = theta_real), nrow = n)
+  data.frame(n = factor(n, levels = n_rep),
+             S_hat = exp(-(1 / colMeans(am)) * t_eval))
+}))
+
+ggplot(df_dist, aes(x = S_hat, fill = n, color = n)) +
+  geom_density(alpha = 0.35) +
+  geom_vline(xintercept = exp(-theta_real * t_eval),
+             linetype = "dashed", color = "red", linewidth = 0.8) +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  labs(title = "Consistência e normalidade assintótica de Ŝ(t)",
+       x = expression(hat(S)(t)), y = "Densidade", fill = "n", color = "n") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+## 7. Discussão
+
+1. **Invariância e consistência.** O EMV $\widehat{S}(t) = e^{-t/\bar{T}}$ é uma
+   transformação não linear de $\hat{\theta}$; por isso é levemente **viesado** em amostras
+   pequenas ($n = 5, 10$), mas o viés decai rapidamente a zero conforme $n$ cresce.
+2. **Qualidade da variância do Método Delta.** A razão entre a variância empírica e a
+   aproximação $\theta^2 t^2 e^{-2\theta t}/n$ se aproxima de $1$ já para $n \ge 50$,
+   confirmando que a aproximação de primeira ordem (Taylor) é muito boa.
+3. **Cobertura.** Para $n$ pequeno, o IC de Wald baseado no Método Delta tem cobertura
+   abaixo do nominal (a distribuição de $\widehat{S}(t)$ ainda é assimétrica); para
+   amostras moderadas a grandes ($n \ge 100$), a cobertura empírica atinge os $95\%$
+   nominais, em linha com a normalidade assintótica demonstrada no item 5.

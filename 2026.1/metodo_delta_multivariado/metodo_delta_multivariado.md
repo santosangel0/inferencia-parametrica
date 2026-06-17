@@ -1,0 +1,255 @@
+
+```#| label: libs
+#| message: false
+#| warning: false
+library(gt)
+library(tibble)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(patchwork)
+library(ggdist)
+```
+
+## 1. O Teorema (Método Delta Multivariado)
+
+Seja $\mathbf{X}_n \in \mathbb{R}^k$ um vetor de estimadores tal que
+
+$$
+\sqrt{n}\,(\mathbf{X}_n - \boldsymbol{\theta}) \xrightarrow{d} N_k(\mathbf{0}, \Sigma),
+$$
+
+e seja $g : \mathbb{R}^k \to \mathbb{R}$ diferenciável em $\boldsymbol{\theta}$. Então
+
+$$
+\sqrt{n}\,\bigl(g(\mathbf{X}_n) - g(\boldsymbol{\theta})\bigr) \xrightarrow{d}
+N\!\left(0,\ \nabla g(\boldsymbol{\theta})^{\top}\, \Sigma\, \nabla g(\boldsymbol{\theta})\right),
+$$
+
+onde $\nabla g(\boldsymbol{\theta})$ é o vetor gradiente de $g$ avaliado em
+$\boldsymbol{\theta}$. É a generalização natural do caso univariado: a variância
+assintótica é a forma quadrática do gradiente em relação à matriz de covariância.
+
+## 2. O Problema: Razão de Médias
+
+Dois setores de uma empresa, $A$ e $B$, têm produtividades médias populacionais $\mu_A$ e
+$\mu_B$. De **amostras independentes** de tamanho $n$ em cada setor, obtemos
+$\bar{X}_A$ e $\bar{X}_B$. Definimos
+
+$$
+\mathbf{X}_n = \begin{pmatrix} \bar{X}_A \\ \bar{X}_B \end{pmatrix},
+\qquad
+\boldsymbol{\theta} = \begin{pmatrix} \mu_A \\ \mu_B \end{pmatrix},
+\qquad
+\sqrt{n}(\mathbf{X}_n - \boldsymbol{\theta}) \xrightarrow{d} N_2(\mathbf{0}, \Sigma),
+$$
+
+com matriz de covariância assintótica
+
+$$
+\Sigma = \begin{pmatrix} \sigma_A^2 & \sigma_{AB} \\ \sigma_{AB} & \sigma_B^2 \end{pmatrix}.
+$$
+
+O objetivo é a distribuição assintótica do estimador da **razão de médias**
+$\tau(\boldsymbol{\theta}) = \mu_A/\mu_B$, ou seja, de $R_n = \bar{X}_A/\bar{X}_B$.
+
+## 3. Aplicação do Método Delta
+
+A função de interesse é $g(\boldsymbol{\theta}) = \dfrac{\mu_A}{\mu_B}$. Seu gradiente é
+
+$$
+\nabla g(\boldsymbol{\theta}) =
+\begin{pmatrix} \dfrac{\partial g}{\partial \mu_A} \\[2mm] \dfrac{\partial g}{\partial \mu_B} \end{pmatrix}
+=
+\begin{pmatrix} \dfrac{1}{\mu_B} \\[2mm] -\dfrac{\mu_A}{\mu_B^2} \end{pmatrix}.
+$$
+
+A variância assintótica é a forma quadrática $\nabla g^{\top} \Sigma\, \nabla g$:
+
+$$
+v(\boldsymbol{\theta}) = \nabla g^{\top} \Sigma\, \nabla g
+= \frac{\sigma_A^2}{\mu_B^2}
+\;-\; 2\,\frac{\mu_A\,\sigma_{AB}}{\mu_B^3}
+\;+\; \frac{\mu_A^2\,\sigma_B^2}{\mu_B^4}.
+$$
+
+**Caso de amostras independentes.** Como o desenho amostral é independente, as médias são
+independentes e $\sigma_{AB} = 0$, de modo que o termo cruzado desaparece:
+
+$$
+v(\boldsymbol{\theta}) = \frac{\sigma_A^2}{\mu_B^2} + \frac{\mu_A^2\,\sigma_B^2}{\mu_B^4}.
+$$
+
+(Em dados **pareados**, $\sigma_{AB} \neq 0$ e o termo cruzado deve ser mantido.)
+Portanto, pelo Método Delta multivariado,
+
+$$
+\sqrt{n}\,(R_n - \tau) \xrightarrow{d}
+N\!\left(0,\ \frac{\sigma_A^2}{\mu_B^2} + \frac{\mu_A^2\,\sigma_B^2}{\mu_B^4}\right),
+\qquad\text{ou}\qquad
+R_n \approx N\!\left(\tau,\ \frac{v(\boldsymbol{\theta})}{n}\right).
+$$
+
+## 4. Validação por Simulação
+
+Adotamos $\mu_A = 50$, $\mu_B = 40$ ($\tau = 1{,}25$), com desvios $\sigma_A = 10$ e
+$\sigma_B = 8$. Substituindo na fórmula:
+
+$$
+v = \frac{10^2}{40^2} + \frac{50^2 \cdot 8^2}{40^4} = 0{,}0625 + 0{,}0625 = 0{,}125,
+\qquad\text{logo}\qquad \operatorname{Var}(R_n) \approx \frac{0{,}125}{n}.
+$$
+
+Para enfatizar que a normalidade de $R_n$ vem do Método Delta (e não dos dados), geramos
+os dados de uma distribuição **Gama** (assimétrica) com a média e variância acima, usando
+$B = 10000$ replicações por tamanho amostral.
+
+```#| label: simulacao
+simular_razao_medias <- function(muA = 50, muB = 40, sA = 10, sB = 8, B = 10000) {
+  tamanhos_n <- c(5, 10, 25, 50, 100, 250, 500, 1000)
+  tau <- muA / muB
+  v   <- sA^2 / muB^2 + muA^2 * sB^2 / muB^4      # variância assintótica (Sigma diagonal)
+
+  # Parâmetros Gama equivalentes (mesma média e variância)
+  shapeA <- muA^2 / sA^2; rateA <- muA / sA^2
+  shapeB <- muB^2 / sB^2; rateB <- muB / sB^2
+
+  processar_n <- function(n) {
+    mA <- matrix(rgamma(n * B, shape = shapeA, rate = rateA), nrow = n)
+    mB <- matrix(rgamma(n * B, shape = shapeB, rate = rateB), nrow = n)
+    xbarA <- colMeans(mA); xbarB <- colMeans(mB)
+    R <- xbarA / xbarB
+
+    # Variâncias amostrais por replicação (estimativa plug-in)
+    s2A <- (colMeans(mA^2) - xbarA^2) * n / (n - 1)
+    s2B <- (colMeans(mB^2) - xbarB^2) * n / (n - 1)
+
+    vies    <- mean(R) - tau
+    var_emp <- var(R)
+    eqm     <- mean((R - tau)^2)
+    var_teo <- v / n
+
+    # Cobertura do IC de Wald 95% com variância estimada via Delta
+    v_hat  <- s2A / xbarB^2 + xbarA^2 * s2B / xbarB^4
+    se_R   <- sqrt(v_hat / n)
+    ic_inf <- R - 1.96 * se_R
+    ic_sup <- R + 1.96 * se_R
+    cobertura <- mean(ic_inf <= tau & tau <= ic_sup)
+
+    c(Vies = vies, Var_Emp = var_emp, Var_Teor = var_teo,
+      Razao = var_emp / var_teo, EQM = eqm, Cobertura = cobertura)
+  }
+
+  resultados <- vapply(tamanhos_n, processar_n, numeric(6))
+  colnames(resultados) <- paste0("n=", tamanhos_n)
+  as.data.frame(t(resultados))
+}
+
+set.seed(42)
+par_sim <- list(muA = 50, muB = 40, sA = 10, sB = 8)
+res_sim <- simular_razao_medias(muA = par_sim$muA, muB = par_sim$muB,
+                                sA = par_sim$sA, sB = par_sim$sB)
+```
+
+```#| label: tabela
+res_sim %>%
+  rownames_to_column(var = "Tamanho") %>%
+  gt() %>%
+  tab_header(
+    title = md("**Validação do Método Delta para $R_n = \\bar{X}_A/\\bar{X}_B$**"),
+    subtitle = md("$\\mu_A = 50$, $\\mu_B = 40$, $\\tau = 1{,}25$, $B = 10000$")
+  ) %>%
+  cols_label(
+    Tamanho = "n", Vies = "Viés", Var_Emp = "Var. Empírica",
+    Var_Teor = "Var. Teórica (Delta)", Razao = "Razão (Emp/Teor)",
+    EQM = "EQM", Cobertura = "Cobertura IC 95%"
+  ) %>%
+  fmt_number(columns = c(Vies, Var_Emp, Var_Teor, Razao, EQM), decimals = 6) %>%
+  fmt_percent(columns = Cobertura, decimals = 2) %>%
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_body(columns = Tamanho)) %>%
+  opt_align_table_header(align = "left")
+```
+
+```#| label: fig-painel
+#| fig-cap: "Comportamento assintótico do estimador da razão de médias R_n."
+#| fig-width: 12
+#| fig-height: 7
+#| column: page-right
+gerar_painel_razao <- function(dados, muA, muB, sA, sB, B = 10000) {
+  tau <- muA / muB
+  shapeA <- muA^2 / sA^2; rateA <- muA / sA^2
+  shapeB <- muB^2 / sB^2; rateB <- muB / sB^2
+
+  df_linha <- dados %>%
+    mutate(n_val = as.numeric(gsub("n=", "", rownames(dados))))
+
+  cores <- c("Empírica" = "#2c3e50", "Teórica (Delta)" = "#e67e22")
+  teminha <- theme_minimal() +
+    theme(legend.position = "none",
+          plot.title = element_text(size = 11, face = "bold"),
+          axis.title = element_text(face = "bold"))
+
+  g_vies <- ggplot(df_linha, aes(n_val, Vies)) +
+    geom_line(color = "#2c3e50", linewidth = 0.8) +
+    geom_point(color = "#2c3e50", size = 2) +
+    labs(title = "Viés Empírico", x = "n", y = "Valor") + teminha
+
+  df_var <- df_linha %>%
+    select(n_val, Var_Emp, Var_Teor) %>%
+    pivot_longer(c(Var_Emp, Var_Teor), names_to = "Tipo", values_to = "Valor") %>%
+    mutate(Tipo = factor(Tipo, c("Var_Emp", "Var_Teor"),
+                         c("Empírica", "Teórica (Delta)")))
+  g_var <- ggplot(df_var, aes(n_val, Valor, color = Tipo)) +
+    geom_line(linewidth = 0.8) + geom_point(size = 2) +
+    scale_color_manual(values = cores) +
+    labs(title = "Variância: Empírica vs Teórica", x = "n", y = "Valor") + teminha
+
+  g_eqm <- ggplot(df_linha, aes(n_val, EQM)) +
+    geom_line(color = "#16a085", linewidth = 0.8) +
+    geom_point(color = "#16a085", size = 2) +
+    labs(title = "Erro Quadrático Médio (EQM)", x = "n", y = "Valor") + teminha
+
+  n_rep <- c(10, 100, 1000)
+  df_dist <- do.call(rbind, lapply(n_rep, function(n) {
+    xbarA <- colMeans(matrix(rgamma(n * B, shape = shapeA, rate = rateA), nrow = n))
+    xbarB <- colMeans(matrix(rgamma(n * B, shape = shapeB, rate = rateB), nrow = n))
+    data.frame(n_val = factor(n, levels = n_rep), R = xbarA / xbarB)
+  }))
+  g_dist <- ggplot(df_dist, aes(n_val, R, fill = n_val)) +
+    stat_halfeye(side = "right", width = 0.8, justification = 0,
+                 alpha = 0.6, point_colour = NA) +
+    geom_hline(aes(yintercept = tau, linetype = "Razão verdadeira"),
+               color = "red", alpha = 0.8) +
+    scale_fill_brewer(palette = "Set2") +
+    scale_linetype_manual(values = "dashed") +
+    labs(title = "Consistência e Normalidade", x = "n", y = expression(R[n])) +
+    teminha +
+    theme(axis.text.y = element_blank(), axis.ticks.y = element_blank(),
+          panel.grid.major.y = element_blank(), panel.grid.minor.y = element_blank())
+
+  (g_vies + g_var) / (g_eqm + g_dist) +
+    plot_layout(guides = 'collect') &
+    theme(legend.position = 'bottom', legend.title = element_blank())
+}
+
+gerar_painel_razao(res_sim, muA = par_sim$muA, muB = par_sim$muB,
+                   sA = par_sim$sA, sB = par_sim$sB)
+```
+
+## 5. Discussão
+
+1. **Viés em amostras pequenas.** Como $R_n = \bar{X}_A/\bar{X}_B$ é uma razão (função não
+   linear), ela é viesada para $n$ pequeno — o denominador aleatório $\bar{X}_B$ introduz
+   um viés que a aproximação linear do Método Delta ignora. O viés decai a zero conforme
+   $n$ cresce, confirmando a **consistência**.
+2. **Variância do Método Delta.** A variância empírica converge para a aproximação
+   $v(\boldsymbol{\theta})/n = 0{,}125/n$; a razão entre elas se aproxima de $1$ para
+   $n \ge 50$, atestando a qualidade da aproximação de primeira ordem.
+3. **Normalidade apesar de dados assimétricos.** Mesmo com dados gerados de uma Gama
+   assimétrica, a distribuição de $R_n$ torna-se simétrica e aproximadamente normal em
+   torno de $\tau = 1{,}25$ à medida que $n$ aumenta (painel inferior direito) — exatamente
+   o que o Método Delta multivariado prevê.
+4. **Cobertura.** O IC de Wald baseado na variância estimada via Delta tende ao nível
+   nominal de $95\%$ para amostras moderadas a grandes; em amostras pequenas, o viés da
+   razão e a assimetria residual reduzem ligeiramente a cobertura.
