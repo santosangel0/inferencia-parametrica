@@ -8,8 +8,6 @@ format:
     embed-resources: true
     code-fold: true
     code-summary: "Mostrar o código"
-    toc: true
-    toc-title: "Sumário"
     grid:
       body-width: 800px # Aumenta a largura do corpo do texto (o padrão é uns 800px)
       margin-width: 100px

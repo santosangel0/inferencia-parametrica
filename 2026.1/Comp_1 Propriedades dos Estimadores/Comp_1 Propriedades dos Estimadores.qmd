@@ -24,7 +24,7 @@ Para entender o comportamento empírico, precisamos olhar para as propriedades t
 
 -   **Viés:** Como tanto a distribuição Normal quanto a Uniforme são simétricas em torno de seu centro, a esperança de ambos os estimadores é igual ao verdadeiro parâmetro ($E[T_1] = E[T_2] = \theta$). Portanto, **ambos são não viesados** nos dois cenários.
 
--   **Variância:** \* A variância da média amostral ($T_1$) é sempre $Var(T_1) = \frac{\sigma^2}{n}$, decaindo linearmente com $n$.
+-   **Variância:** A variância da média amostral ($T_1$) é sempre $Var(T_1) = \frac{\sigma^2}{n}$, decaindo linearmente com $n$.
 
     -   A variância do meio da amplitude ($T_2$) depende fortemente das caudas da distribuição. Na Uniforme (caudas curtas e limitadas), ela decai a uma taxa bem rápida. Na Normal (caudas infinitas), ela decai de forma extremamente lenta.
 
@@ -68,7 +68,7 @@ simular_estimadores <- function(cenario = c("normal", "uniforme"), B = 10000) {
     # Função para calcular as métricas (viés, var, eqm)
     calcular_metricas <- function(estimativas) {
       vies <- mean(x = estimativas) - theta_verdadeiro
-      variancia <- var(x = estimativas, use = )
+      variancia <- var(x = estimativas)
       eqm <- mean(x = (estimativas - theta_verdadeiro)^2)
       return(c(vies = vies, var = variancia, eqm = eqm))
     }

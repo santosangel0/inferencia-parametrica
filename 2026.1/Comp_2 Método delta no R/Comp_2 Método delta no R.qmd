@@ -14,7 +14,7 @@ format:
 
 ## 1. Fundamentação Teórica: Exercício 3.13
 
-Neste estudo, analisamos o comportamento assintótico do Estimador de Máxima Verossimilhança (EMV) para a probabilidade de sobrevivência a um tempo unitário sob um modelo exponencial. O problema é baseado no Exercício 3.13 do livro de Bolfarine e Bussab:
+Neste estudo, analisamos o comportamento assintótico do Estimador de Máxima Verossimilhança (EMV) para a probabilidade de sobrevivência a um tempo unitário sob um modelo exponencial. O problema é baseado no Exercício 3.13 do livro de Bolfarine e Sandoval:
 
 > **Enunciado:** Sejam $X_1, \dots, X_n$ uma amostra aleatória da variável aleatória $X$ com distribuição exponencial com parâmetro $\theta$. Encontre o estimador de máxima verossimilhança de $g(\theta) = P[X > 1]$ e sua distribuição aproximada quando $n$ for grande.
 

@@ -8,8 +8,6 @@ format:
     embed-resources: true
     code-fold: true
     code-summary: "Mostrar o código"
-    toc: true
-    toc-title: "Sumário"
     grid:
       body-width: 800px # Aumenta a largura do corpo do texto (o padrão é uns 800px)
       margin-width: 100px
@@ -26,7 +24,7 @@ library(tibble)
 
 Uma amostra de 300 alunas do Ensino Médio foi pesquisada sobre o uso do cinto de
 segurança. Um IC de 95% para a proporção $p$ de todas as alunas que **sempre** usam
-o cinto foi calculado como $[0{,}612;\ 0{,}668]$.
+o cinto foi calculado como $[0{,}612;\ 0{,}668]$.^[O limite superior considerado é $0{,}668$.]
 
 **A afirmação está correta?** *"A probabilidade da proporção de alunas estar entre
 0,612 e 0,668 é de 0,95."*
@@ -51,10 +49,6 @@ sorteando novas amostras de 300 alunas e construindo um IC de 95% a cada vez,
 **aproximadamente 95% desses intervalos conteriam o verdadeiro valor de $p$**. Dizemos
 então que temos 95% de confiança de que o intervalo $[0{,}612;\ 0{,}668]$ contém a
 verdadeira proporção.
-
-> **Observação:** o enunciado ainda traz um deslize numérico (escreve $0{,}688$ no
-> texto, mas o intervalo é $[0{,}612;\ 0{,}668]$). De todo modo, o problema central da
-> afirmação é conceitual.
 
 ## Exercício 2) [5 pontos] — Erros do Tipo I e II
 
